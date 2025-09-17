@@ -1,7 +1,7 @@
 import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { getQuizTemplates } from "../api/quiz";
-import { createUser } from "../api/auth";
+import { createUser, checkAttempt } from "../api/auth";
 import { useState, useEffect } from "react";
 import useZaloUserData from "../hook/useZaloUserData";
 import Navbar from "../components/Navbar";
@@ -62,77 +62,110 @@ function QuizSelectionPage() {
 
     fetchQuizTemplates();
   }, []);
-  // // useEffect để xử lý khi state đã update
-  // useEffect(() => {
-  //   const handleUserData = async () => {
-  //     if (shouldFetch && !isLoadingUser) {
-  //       // Chỉ chuyển page khi user đồng ý chia sẻ
-  //       if (userInfo && phoneNumber) {
-  //         // Gọi API createUser
-  //         try {
-  //           const userData = {
-  //             userId: userInfo.id,
-  //             name: userInfo.name,
-  //             phone: phoneNumber.number,
-  //             avatar: userInfo.avatar,
-  //             idByOA: userInfo.idByOA || "",
-  //             followedOA: userInfo.followedOA || false,
-  //             isSensitive: userInfo.isSensitive || false,
-  //           };
+  // useEffect để xử lý khi state đã update
+  useEffect(() => {
+    const handleUserData = async () => {
+      if (shouldFetch && !isLoadingUser) {
+        // Chỉ chuyển page khi user đồng ý chia sẻ
+        if (userInfo && phoneNumber) {
+          // Gọi API createUser
+          try {
+            const userData = {
+              userId: userInfo.id,
+              name: userInfo.name,
+              phone: phoneNumber.number,
+              avatar: userInfo.avatar,
+              idByOA: userInfo.idByOA || "",
+              followedOA: userInfo.followedOA || false,
+              isSensitive: userInfo.isSensitive || false,
+            };
             
-  //           await createUser(userData);
+            await createUser(userData);
             
-  //           // Chỉ chuyển page sau khi tạo user thành công
-  //           const selectedQuizId = localStorage.getItem("selectedQuizId");
-  //           if (selectedQuizId) {
-  //             navigate(`/quiz/${selectedQuizId}`);
-  //             localStorage.removeItem("selectedQuizId");
-  //           } else {
-  //             navigate("/quiz-selection");
-  //           }
-  //         } catch (error: any) {
-  //           // Nếu tạo user thất bại, vẫn chuyển page
-  //           const selectedQuizId = localStorage.getItem("selectedQuizId");
-  //           if (selectedQuizId) {
-  //             navigate(`/quiz/${selectedQuizId}`);
-  //             localStorage.removeItem("selectedQuizId");
-  //           } else {
-  //             navigate("/quiz-selection");
-  //           }
-  //         }
-  //       } else {
-  //         // User từ chối chia sẻ -> không chuyển page, chỉ reset state
-  //         console.log("User từ chối chia sẻ dữ liệu");
-  //       }
+            // Sau khi tạo user thành công, navigate trực tiếp (không cần checkAttempt)
+            const selectedQuizId = localStorage.getItem("selectedQuizId");
+            if (selectedQuizId) {
+              navigate(`/quiz/${selectedQuizId}`);
+              localStorage.removeItem("selectedQuizId");
+            } else {
+              navigate("/quiz-selection");
+            }
+          } catch (error: any) {
+            // Nếu tạo user thất bại, vẫn chuyển page
+            const selectedQuizId = localStorage.getItem("selectedQuizId");
+            if (selectedQuizId) {
+              navigate(`/quiz/${selectedQuizId}`);
+              localStorage.removeItem("selectedQuizId");
+            } else {
+              navigate("/quiz-selection");
+            }
+          }
+        } else {
+          // User từ chối chia sẻ -> không chuyển page, chỉ reset state
+        }
         
-  //       setIsProcessing(false);
-  //       setShouldFetch(false);
-  //     }
-  //   };
+        setIsProcessing(false);
+        setShouldFetch(false);
+      }
+    };
 
-  //   handleUserData();
-  // }, [userInfo, phoneNumber, isLoadingUser, shouldFetch, navigate]);
+    handleUserData();
+  }, [userInfo, phoneNumber, isLoadingUser, shouldFetch, navigate]);
 
-  // const handleStartQuiz = async (quizId: number) => {
-  //   try {
-  //     setIsProcessing(true);
+  const handleStartQuiz = async (quizId: number) => {
+    try {
+      setIsProcessing(true);
       
-  //     // Gọi hook để lấy thông tin user từ Zalo khi bấm button
-  //     await fetchUserData();
+      // Bước 1: Gọi checkAttempt trước để kiểm tra user có trong database không
+      if (user && user.userId) {
+        try {
+          const attemptResult = await checkAttempt(user.userId, quizId);
+          
+          // Xử lý kết quả check attempt
+          if (attemptResult && attemptResult.success && attemptResult.data) {
+            if (attemptResult.data.hasAttempted) {
+              // User đã làm quiz này rồi - hiển thị thông báo
+              alert("Bạn đã làm quiz này rồi!");
+              setIsProcessing(false);
+              setShouldFetch(false);
+              return; // Dừng lại, không tiếp tục
+            } else {
+              // User chưa làm quiz này, tiếp tục bình thường
+              navigate(`/quiz/${quizId}`);
+              setIsProcessing(false);
+              return;
+            }
+          } else {
+            // API không trả về data hoặc lỗi, không cho qua
+            alert("Không thể kiểm tra trạng thái quiz. Vui lòng thử lại!");
+            setIsProcessing(false);
+            setShouldFetch(false);
+            return;
+          }
+        } catch (attemptError) {
+          // Nếu check attempt lỗi, không cho qua
+          alert("Lỗi khi kiểm tra trạng thái quiz. Vui lòng thử lại!");
+          setIsProcessing(false);
+          setShouldFetch(false);
+          return;
+        }
+      }
       
-  //     // Trigger useEffect để xử lý khi state đã update
-  //     setShouldFetch(true);
+      // Bước 2: Nếu không có user hoặc user.userId, gọi fetchUserData để tạo user
+      await fetchUserData();
       
-  //     // Lưu quizId để sử dụng sau khi xử lý user data
-  //     localStorage.setItem("selectedQuizId", quizId.toString());
+      // Trigger useEffect để xử lý khi state đã update
+      setShouldFetch(true);
       
-  //   } catch (error: any) {
-  //     // Nếu có lỗi, reset state và không chuyển page
-  //     console.log("Lỗi khi lấy dữ liệu user:", error);
-  //     setIsProcessing(false);
-  //     setShouldFetch(false);
-  //   }
-  // };
+      // Lưu quizId để sử dụng sau khi xử lý user data
+      localStorage.setItem("selectedQuizId", quizId.toString());
+      
+    } catch (error: any) {
+      // Nếu có lỗi, reset state và không chuyển page
+      setIsProcessing(false);
+      setShouldFetch(false);
+    }
+  };
   const handleNavTabChange = (tab: "quiz-selection" | "profile") => {
     if (tab === "quiz-selection") {
       navigate("/quiz-selection");
@@ -273,7 +306,7 @@ function QuizSelectionPage() {
                     } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     suffixIcon={isProcessing ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div> : <Icon icon="zi-play" />}
                     onClick={() => {
-                      navigate(`/quiz/${quiz.id}`);
+                      handleStartQuiz(quiz.id);
                     }}
                   >
                     {isProcessing ? "ĐANG XỬ LÝ..." : "LÀM NGAY"}

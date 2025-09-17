@@ -117,6 +117,80 @@ export const updateUserPharmacy = async (userId, pharmacyData) => {
       throw error;
     }
   };
+
+// Get user gifts
+export const getUserGifts = async (userId) => {
+    if (!userId) {
+      return null;
+    }
+  
+    const requestConfig = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      baseURL: BASE_URL,
+      url: `/api/miniApp/quiz/users/${userId}/gifts`,
+    };
+  
+    try {
+      const result = await axios(requestConfig);
+      return result.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+// Create user gift
+export const createUserGift = async (userId, giftData) => {
+    if (!userId) {
+      return null;
+    }
+  
+    const requestConfig = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      baseURL: BASE_URL,
+      url: `/api/miniApp/quiz/users/${userId}/gifts`,
+      data: giftData,
+    };
+  
+    try {
+      const result = await axios(requestConfig);
+      return result.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+// Check quiz attempt
+export const checkAttempt = async (userId, quizId) => {
+    if (!userId || !quizId) {
+      return null;
+    }
+  
+    const requestConfig = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      baseURL: BASE_URL,
+      url: `/api/miniApp/quiz/submissions/check-attempt`,
+      params: {
+        userId: userId,
+        quizId: quizId,
+      },
+    };
+  
+    try {
+      const result = await axios(requestConfig);
+      return result.data;
+    } catch (error) {
+      throw error;
+    }
+  };
   
   
   

@@ -15,6 +15,8 @@ import HomePage from "@/pages/index";
 import QuizSelectionPage from "@/pages/quiz-selection";
 import QuizPage from "@/pages/quiz";
 import ProfilePage from "@/pages/profile";
+import GiftsPage from "@/components/gifts";
+import ViewQuizHistoryPage from "@/components/view-quiz-history";
 import EditProfilePage from "@/components/edit-profile";
 import QuizResultPage from "@/components/quiz-result";
 interface UserInfo {
@@ -96,6 +98,8 @@ const Layout = () => {
             <Route path="/quiz/:id" element={<QuizPage />}></Route>
             <Route path="/quiz-result/:id" element={<QuizResultPage />}></Route>
             <Route path="/profile" element={<ProfilePage />}></Route>
+            <Route path="/gifts" element={<GiftsPage />}></Route>
+        <Route path="/quiz-history" element={<ViewQuizHistoryPage />}></Route>
             <Route path="/edit-profile" element={<EditProfilePage />}></Route>
           </AnimationRoutes>
         </ZMPRouter>

@@ -44,24 +44,18 @@ function QuizResultPage() {
         const { answers, quiz, timeSpent, apiResult } = location.state || {};
         
         if (!answers || !quiz) {
-          console.error("Missing required data:", { answers, quiz });
           setIsLoading(false);
           return;
         }
 
-        console.log("Displaying quiz result with data from quiz.tsx:", { answers, quiz, timeSpent, apiResult });
-
         // Use API result if available, otherwise show error
         if (apiResult && apiResult.success) {
-          console.log("Using API result from quiz.tsx:", apiResult);
           setResultData(apiResult);
         } else {
-          console.log("No API result available");
           setResultData(null); // Show error state
         }
 
       } catch (error) {
-        console.error("Error displaying quiz result:", error);
         setIsLoading(false);
         return;
       } finally {
@@ -83,13 +77,12 @@ function QuizResultPage() {
 
       try {
         const userCheckResult = await checkUserExists(user.userId);
-        console.log("User check result:", userCheckResult);
         
         if (userCheckResult && userCheckResult.success && userCheckResult.data) {
           setUserInfo(userCheckResult.data);
         }
       } catch (error) {
-        console.error("Error checking user info:", error);
+        // Handle error silently
       }
     };
 

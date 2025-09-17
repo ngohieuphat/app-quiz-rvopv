@@ -1,6 +1,7 @@
 import { Button, Icon, Page, Text, Box, useNavigate, useLocation } from "zmp-ui";
 import { useState, useEffect, useRef } from "react";
 import { getQuizTemplateById, submitQuizSubmission } from "../api/quiz";
+import { createUserGift } from "../api/auth";
 import useAuth from "../hook/authhook";
 
 // Define quiz interfaces
@@ -49,7 +50,7 @@ interface QuizTemplate {
 function QuizPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, checkAuth } = useAuth();
   
   // Extract quiz ID from URL path
   const pathSegments = location.pathname.split('/');
@@ -74,6 +75,14 @@ function QuizPage() {
       
       try {
         setIsLoading(true);
+        
+        // Kiểm tra và cập nhật user data nếu cần
+        const userId = localStorage.getItem("userId");
+        if (userId && (!user || !user.userId)) {
+          console.log("🔄 Cập nhật user data từ server...");
+          await checkAuth();
+        }
+        
         const response = await getQuizTemplateById(parseInt(id));
         
         if (response && response.success && response.data && response.data.quiz) {
@@ -90,7 +99,7 @@ function QuizPage() {
     };
 
     fetchQuiz();
-  }, [id]);
+  }, [id, user, checkAuth]);
 
   // Timer effect
   useEffect(() => {
@@ -119,7 +128,6 @@ function QuizPage() {
   // Start timer when question changes
   useEffect(() => {
     if (quiz && quiz.questions.length > 0) {
-      console.log("Starting timer for question index:", currentQuestionIndex);
       timeUpHandled.current = false; // Reset flag
       setTimeLeft(30);
       setTimerActive(true);
@@ -128,14 +136,11 @@ function QuizPage() {
 
   const handleTimeUp = () => {
     if (timeUpHandled.current) {
-      console.log("Time up already handled, skipping...");
       return;
     }
     
     timeUpHandled.current = true;
     setTimerActive(false);
-    
-    console.log("Time up! Current question index:", currentQuestionIndex);
     
     // Save current answer (if any) or mark as unanswered
     setAnswers(prev => {
@@ -144,17 +149,13 @@ function QuizPage() {
         [currentQuestionIndex]: selectedAnswer !== null ? selectedAnswer : -1 // -1 means unanswered
       };
       
-      console.log("New answers:", newAnswers);
-      
       // Move to next question or finish quiz
       if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
         const nextQuestionIndex = currentQuestionIndex + 1;
-        console.log("Moving to next question index:", nextQuestionIndex);
         setCurrentQuestionIndex(nextQuestionIndex);
         setSelectedAnswer(newAnswers[nextQuestionIndex] || null);
       } else {
         // Quiz completed - submit with current answers
-        console.log("Quiz completed!");
         setTimeout(() => handleSubmitQuiz(newAnswers), 100);
       }
       
@@ -224,18 +225,26 @@ function QuizPage() {
           })
         };
 
-        console.log("Submitting quiz data:", submissionData);
-
         // Submit to API and get result
         apiResult = await submitQuizSubmission(submissionData);
-        console.log("API result from quiz.tsx:", apiResult);
+        
+        // Create user gift if submission is successful
+        if (apiResult && (apiResult as any).success && (apiResult as any).data) {
+          try {
+            const giftData = {
+              point: (apiResult as any).data.submission.score,
+              message: (apiResult as any).data.reward.message
+            };
+            
+            await createUserGift(user.userId, giftData);
+          } catch (giftError) {
+            // Don't block the flow if gift creation fails
+          }
+        }
       }
     } catch (error: any) {
-      console.error("Error submitting quiz:", error);
-      
       // Check if it's the "already submitted" error
       if (error.response && error.response.data && error.response.data.message === "User has already submitted this quiz") {
-        console.log("User already submitted this quiz, using fallback data");
         // Create fallback result for already submitted quiz
         apiResult = {
           success: true,
@@ -260,9 +269,6 @@ function QuizPage() {
             }
           }
         } as any;
-      } else {
-        // Other errors - apiResult remains null
-        console.log("Other error, apiResult will be null");
       }
     }
     
@@ -359,7 +365,7 @@ function QuizPage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
         <div className="flex items-center space-x-2">
           {/* <Button 
             variant="secondary" 
@@ -400,20 +406,20 @@ function QuizPage() {
       </div>
 
       {/* Main Content */}
-      <div className="px-4 py-6">
+      <div className="px-3 py-4">
         {/* Quiz Info */}
-        <Box className="bg-white rounded-2xl p-4 mb-6 shadow-lg">
+        <Box className="bg-white rounded-xl p-3 mb-4 shadow-lg">
           <div className="text-center">
-            <Text.Title size="large" className="text-purple-600 font-bold mb-2">
+            <Text.Title size="normal" className="text-purple-600 font-bold mb-2">
               {quiz.name}
             </Text.Title>
-            <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+            <div className="flex items-center justify-center space-x-3 text-xs text-gray-600">
               <div className="flex items-center space-x-1">
-                <Icon icon="zi-chat" className="text-blue-500" />
+                <Icon icon="zi-chat" className="text-blue-500 text-sm" />
                 <span>{quiz.questions.length} câu hỏi</span>
               </div>
               <div className="flex items-center space-x-1">
-                <Icon icon="zi-star" className="text-yellow-500" />
+                <Icon icon="zi-star" className="text-yellow-500 text-sm" />
                 <span>{quiz.totalPoints} điểm</span>
               </div>
             </div>
@@ -421,41 +427,46 @@ function QuizPage() {
         </Box>
 
         {/* Question */}
-        <Box className="bg-white rounded-2xl p-6 mb-6 shadow-lg">
-          <div className="mb-6">
-            <Text.Title size="large" className="text-gray-800 font-bold leading-relaxed">
+        <Box className="bg-white rounded-xl p-4 mb-4 shadow-lg">
+          <div className="mb-4">
+            <Text.Title size="normal" className="text-gray-800 font-bold leading-relaxed">
               {currentQuestion.content.text}
             </Text.Title>
           </div>
 
           {/* Media Content */}
           {currentQuestion.content.media && (
-            <div className="mb-6">
+            <div className="mb-4">
               {currentQuestion.content.type === 'video' && (
                 <div className="w-full">
-                  <video 
-                    controls 
-                    className="w-full rounded-xl shadow-lg"
-                    poster=""
-                  >
-                    <source src={currentQuestion.content.media.url} type="video/mp4" />
-                    Trình duyệt của bạn không hỗ trợ video.
-                  </video>
+                  <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                    <video 
+                      controls 
+                      className="w-full h-full rounded-xl shadow-lg object-cover"
+                      poster=""
+                    >
+                      <source src={currentQuestion.content.media.url} type="video/mp4" />
+                      Trình duyệt của bạn không hỗ trợ video.
+                    </video>
+                  </div>
                 </div>
               )}
               
               {currentQuestion.content.type === 'audio' && (
-                <div className="w-full bg-gray-50 rounded-xl p-4">
+                <div className="w-full bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-3 border border-purple-200">
                   <div className="flex items-center space-x-3">
-                    <Icon icon="zi-mic" className="text-purple-600 text-2xl" />
-                    <div className="flex-1">
-                      <Text size="normal" className="text-gray-700 font-medium mb-2">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Icon icon="zi-mic" className="text-purple-600 text-lg" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text size="small" className="text-gray-700 font-medium mb-1 truncate">
                         {currentQuestion.content.media.originalName}
                       </Text>
                       <audio 
                         controls 
-                        className="w-full"
+                        className="w-full h-8"
                         preload="metadata"
+                        style={{ height: '32px' }}
                       >
                         <source src={currentQuestion.content.media.url} type="audio/mpeg" />
                         Trình duyệt của bạn không hỗ trợ audio.
@@ -470,7 +481,7 @@ function QuizPage() {
                   <img 
                     src={currentQuestion.content.media.url} 
                     alt="Question image"
-                    className="w-full rounded-xl shadow-lg object-cover"
+                    className="w-full max-h-64 rounded-xl shadow-lg object-cover"
                   />
                 </div>
               )}
@@ -478,19 +489,19 @@ function QuizPage() {
           )}
 
           {/* Answer Options */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             {currentQuestion.answers && currentQuestion.answers.length > 0 ? currentQuestion.answers.map((answer, index) => (
               <button
                 key={index}
                 onClick={() => handleAnswerSelect(index)}
-                className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
                   selectedAnswer === index
                     ? 'border-purple-500 bg-purple-50 text-purple-700'
                     : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                     selectedAnswer === index
                       ? 'border-purple-500 bg-purple-500'
                       : 'border-gray-300'
@@ -499,14 +510,14 @@ function QuizPage() {
                       <div className="w-2 h-2 bg-white rounded-full"></div>
                     )}
                   </div>
-                  <Text size="normal" className="font-medium">
+                  <Text size="small" className="font-medium">
                     {answer.content}
                   </Text>
                 </div>
               </button>
             )) : (
-              <div className="text-center py-8">
-                <Text size="normal" className="text-gray-500">
+              <div className="text-center py-6">
+                <Text size="small" className="text-gray-500">
                   Không có tùy chọn trả lời
                 </Text>
               </div>
@@ -515,10 +526,10 @@ function QuizPage() {
         </Box>
 
         {/* Navigation Buttons */}
-        <div className="flex space-x-4">
+        <div className="flex space-x-3">
           <Button
             variant="secondary"
-            size="large"
+            size="medium"
             onClick={handlePreviousQuestion}
             disabled={currentQuestionIndex === 0}
             className="flex-1"
@@ -529,7 +540,7 @@ function QuizPage() {
           
           <Button
             variant="primary"
-            size="large"
+            size="medium"
             onClick={handleNextQuestion}
             disabled={selectedAnswer === null}
             className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"

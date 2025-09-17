@@ -5,8 +5,7 @@ import React, {
     useState,
     useRef,
   } from "react";
-  import { getUserById, checkUserExists } from "../api/auth";
-  import { nativeStorage } from "zmp-sdk/apis";
+import { getUserById, checkUserExists } from "../api/auth";
   
   // Tạo context để lưu trữ thông tin người dùng
   const authContext = createContext({} as UseProviderAuth);
@@ -25,6 +24,23 @@ import React, {
     street: string;
   }
   
+  interface Gift {
+    id: number;
+    point: number;
+    isUsed: boolean;
+    message: string;
+    createdAt: string;
+  }
+
+  interface QuizAttempt {
+    id: number;
+    name: string;
+    quizId: number;
+    score: number;
+    status: string;
+    completedAt: string;
+  }
+
   interface UserAuth {
     id: number; // ID người dùng
     name: string; // Tên người dùng
@@ -37,14 +53,14 @@ import React, {
     isSensitive: boolean; // Cờ nhạy cảm
     role_code: string; // Mã vai trò của người dùng
     pharmacyName: string | null; // Tên nhà thuốc
-    address: any; // Địa chỉ từ API (array hoặc object)
-    giftName: any; // Gift data từ API
+    address: any[]; // Địa chỉ từ API (array)
+    giftName: Gift[]; // Gift data từ API
     totalQuizzesCompleted: number; // Tổng số quiz đã hoàn thành
     averageScore: string; // Điểm trung bình
     lastQuizDate: string | null; // Ngày quiz cuối cùng
     createdAt: string; // Thời gian tạo
     updatedAt: string; // Thời gian cập nhật
-    quizAttempts: any[]; // Lịch sử làm quiz
+    quizAttempts: QuizAttempt[]; // Lịch sử làm quiz
   }
   
   interface UseProviderAuth {
@@ -64,19 +80,8 @@ import React, {
   
     const checkAuth = async () => {
       try {
-        // Kiểm tra cả localStorage và nativeStorage
-        const localStorageUserId = localStorage.getItem("userId");
-        
-        // Thử nativeStorage trước, fallback to localStorage
-        let storedUserId = null;
-        try {
-          storedUserId = await nativeStorage.getItem("userId");
-        } catch (nativeError) {
-          console.log("⚠️ Native storage getItem failed, using localStorage:", nativeError);
-        }
-        
-        // Sử dụng userId từ localStorage nếu nativeStorage không có
-        const finalUserId = storedUserId || localStorageUserId;
+        // Chỉ sử dụng localStorage vì nativeStorage không được hỗ trợ
+        const finalUserId = localStorage.getItem("userId");
   
         if (finalUserId) {
           try {

@@ -24,13 +24,11 @@ function ProfilePage() {
   };
 
   const handleViewQuizHistory = () => {
-    // TODO: Navigate to quiz history page
-    console.log("View quiz history clicked");
+    navigate("/quiz-history");
   };
 
   const handleViewRewards = () => {
-    // TODO: Navigate to rewards page
-    console.log("View rewards clicked");
+    navigate("/gifts");
   };
 
   const handleLogout = () => {
@@ -201,7 +199,7 @@ function ProfilePage() {
           </Box>
 
           {/* Settings */}
-          <Box className="bg-white rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-white rounded-2xl p-4 shadow-lg">
             <button 
               onClick={() => console.log("Settings clicked")}
               className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors"
@@ -221,7 +219,7 @@ function ProfilePage() {
               </div>
               <Icon icon="zi-arrow-right" className="text-gray-400" />
             </button>
-          </Box>
+          </Box> */}
 
           {/* Help & Support */}
           <Box className="bg-white rounded-2xl p-4 shadow-lg">
