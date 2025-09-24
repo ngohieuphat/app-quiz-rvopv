@@ -150,7 +150,6 @@ import { getUserById, checkUserExists } from "../api/auth";
       const handleStorageChange = async (e: StorageEvent) => {
         // Khi userId thay đổi trong storage (sau khi đăng ký)
         if (e.key === "userId" && e.newValue) {
-          console.log("User ID changed in storage, refreshing auth...");
           await checkAuth();
         }
       };

@@ -59,11 +59,12 @@ function QuizPage() {
   const [quiz, setQuiz] = useState<QuizTemplate | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<{ [key: number]: number }>({});
+  const [answers, setAnswers] = useState<{ [key: number]: number | null }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [timerActive, setTimerActive] = useState(false);
+  const [questionTimes, setQuestionTimes] = useState<{ [key: number]: number }>({});
   const timeUpHandled = useRef(false);
 
   useEffect(() => {
@@ -79,7 +80,6 @@ function QuizPage() {
         // Kiểm tra và cập nhật user data nếu cần
         const userId = localStorage.getItem("userId");
         if (userId && (!user || !user.userId)) {
-          console.log("🔄 Cập nhật user data từ server...");
           await checkAuth();
         }
         
@@ -129,10 +129,27 @@ function QuizPage() {
   useEffect(() => {
     if (quiz && quiz.questions.length > 0) {
       timeUpHandled.current = false; // Reset flag
-      setTimeLeft(30);
+      
+      // Check if we have saved time for this question
+      const savedTime = questionTimes[currentQuestionIndex];
+      if (savedTime !== undefined) {
+        setTimeLeft(savedTime);
+      } else {
+        setTimeLeft(30);
+      }
+      
       setTimerActive(true);
     }
-  }, [currentQuestionIndex, quiz]);
+  }, [currentQuestionIndex, quiz, questionTimes]);
+
+  // Separate useEffect for restoring answers
+  useEffect(() => {
+    if (quiz && quiz.questions.length > 0) {
+      // Restore saved answer for this question
+      const savedAnswer = answers[currentQuestionIndex];
+      setSelectedAnswer(savedAnswer !== undefined ? savedAnswer : null);
+    }
+  }, [currentQuestionIndex, answers, quiz]);
 
   const handleTimeUp = () => {
     if (timeUpHandled.current) {
@@ -170,37 +187,61 @@ function QuizPage() {
   const handleNextQuestion = () => {
     setTimerActive(false); // Stop current timer
     
-    if (selectedAnswer !== null) {
-      setAnswers(prev => {
-        const newAnswers = {
-          ...prev,
-          [currentQuestionIndex]: selectedAnswer
-        };
+    // Save current time for this question
+    setQuestionTimes(prev => ({
+      ...prev,
+      [currentQuestionIndex]: timeLeft
+    }));
+    
+    // Always save current answer (even if null)
+    setAnswers(prev => {
+      const newAnswers = {
+        ...prev,
+        [currentQuestionIndex]: selectedAnswer
+      };
+      
+      if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
+        const nextQuestionIndex = currentQuestionIndex + 1;
         
-        if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
-          const nextQuestionIndex = currentQuestionIndex + 1;
-          setCurrentQuestionIndex(nextQuestionIndex);
-          setSelectedAnswer(newAnswers[nextQuestionIndex] || null);
-        } else {
-          // Quiz completed - submit with current answers
-          setTimeout(() => handleSubmitQuiz(newAnswers), 100);
-        }
-        
-        return newAnswers;
-      });
-    }
+        // Just change question index, useEffect will handle answer restoration
+        setCurrentQuestionIndex(nextQuestionIndex);
+      } else {
+        // Quiz completed - submit with current answers
+        setTimeout(() => handleSubmitQuiz(newAnswers), 100);
+      }
+      
+      return newAnswers;
+    });
   };
 
   const handlePreviousQuestion = () => {
     setTimerActive(false); // Stop current timer
     
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-      setSelectedAnswer(answers[currentQuestionIndex - 1] || null);
-    }
+    // Save current time for this question
+    setQuestionTimes(prev => ({
+      ...prev,
+      [currentQuestionIndex]: timeLeft
+    }));
+    
+    // Save current answer before going back
+    setAnswers(prev => {
+      const newAnswers = {
+        ...prev,
+        [currentQuestionIndex]: selectedAnswer
+      };
+      
+      if (currentQuestionIndex > 0) {
+        const prevQuestionIndex = currentQuestionIndex - 1;
+        
+        // Just change question index, useEffect will handle answer restoration
+        setCurrentQuestionIndex(prevQuestionIndex);
+      }
+      
+      return newAnswers;
+    });
   };
 
-  const handleSubmitQuiz = async (finalAnswers?: { [key: number]: number }) => {
+  const handleSubmitQuiz = async (finalAnswers?: { [key: number]: number | null }) => {
     setTimerActive(false); // Stop timer
     setIsSubmitting(true);
     
@@ -211,16 +252,22 @@ function QuizPage() {
         // Use finalAnswers if provided, otherwise use current answers state
         const answersToSubmit = finalAnswers || answers;
         
+        // Calculate total time spent across all questions
+        const totalTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
+          const timeUsed = 30 - timeLeft;
+          return total + timeUsed;
+        }, 0) + (30 - timeLeft); // Add current question time
+
         // Prepare submission data
         const submissionData = {
           userId: user.userId,
           quizId: quiz.id,
-          timeSpent: (30 - timeLeft) + (currentQuestionIndex * 30), // Calculate total time spent
+          timeSpent: totalTimeSpent,
           answers: Object.entries(answersToSubmit).map(([questionIndex, answerIndex]) => {
             const question = quiz.questions[parseInt(questionIndex)];
             return {
               questionId: question.id,
-              answer: answerIndex >= 0 ? question.answers[answerIndex].content : ""
+              answer: (answerIndex !== null && answerIndex >= 0) ? question.answers[answerIndex].content : ""
             };
           })
         };
@@ -245,6 +292,12 @@ function QuizPage() {
     } catch (error: any) {
       // Check if it's the "already submitted" error
       if (error.response && error.response.data && error.response.data.message === "User has already submitted this quiz") {
+        // Calculate total time spent for fallback result
+        const fallbackTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
+          const timeUsed = 30 - timeLeft;
+          return total + timeUsed;
+        }, 0) + (30 - timeLeft);
+
         // Create fallback result for already submitted quiz
         apiResult = {
           success: true,
@@ -253,8 +306,8 @@ function QuizPage() {
               id: Date.now(),
               score: 100,
               totalQuestions: quiz?.questions.length || 5,
-              correctAnswers: Object.values(finalAnswers || answers).filter((answer: any) => answer >= 0).length,
-              timeSpent: (30 - timeLeft) + (currentQuestionIndex * 30),
+              correctAnswers: Object.values(finalAnswers || answers).filter((answer: any) => answer !== null && answer >= 0).length,
+              timeSpent: fallbackTimeSpent,
               completedAt: new Date().toISOString()
             },
             reward: {
@@ -272,12 +325,18 @@ function QuizPage() {
       }
     }
     
+    // Calculate final time spent for navigation
+    const finalTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
+      const timeUsed = 30 - timeLeft;
+      return total + timeUsed;
+    }, 0) + (30 - timeLeft);
+
     // Navigate to results page with API result
     navigate(`/quiz-result/${id}`, { 
       state: { 
         answers: finalAnswers || answers, 
         quiz,
-        timeSpent: (30 - timeLeft) + (currentQuestionIndex * 30),
+        timeSpent: finalTimeSpent,
         apiResult: apiResult // Pass API result to quiz-result.tsx
       } 
     });

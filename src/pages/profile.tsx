@@ -33,7 +33,6 @@ function ProfilePage() {
 
   const handleLogout = () => {
     // TODO: Implement logout logic
-    console.log("Logout clicked");
     navigate("/");
   };
 
@@ -47,7 +46,6 @@ function ProfilePage() {
 
   const handleAddClick = () => {
     // TODO: Handle add click
-    console.log("Add clicked");
   };
 
   return (
@@ -201,7 +199,7 @@ function ProfilePage() {
           {/* Settings */}
           {/* <Box className="bg-white rounded-2xl p-4 shadow-lg">
             <button 
-              onClick={() => console.log("Settings clicked")}
+              onClick={() => {}}
               className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors"
             >
               <div className="flex items-center space-x-3">
@@ -224,7 +222,7 @@ function ProfilePage() {
           {/* Help & Support */}
           <Box className="bg-white rounded-2xl p-4 shadow-lg">
             <button 
-              onClick={() => console.log("Help clicked")}
+              onClick={() => {}}
               className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors"
             >
               <div className="flex items-center space-x-3">

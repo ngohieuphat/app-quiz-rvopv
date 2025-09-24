@@ -22,7 +22,6 @@ function ViewQuizHistoryPage() {
 
   const handleAddClick = () => {
     // TODO: Handle add click
-    console.log("Add clicked");
   };
 
   // Cập nhật dữ liệu từ server khi component mount (chỉ 1 lần)
