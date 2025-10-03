@@ -59,7 +59,8 @@ function QuizPage() {
   const [quiz, setQuiz] = useState<QuizTemplate | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<{ [key: number]: number | null }>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<{ [key: number]: number | null | number[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -145,9 +146,18 @@ function QuizPage() {
   // Separate useEffect for restoring answers
   useEffect(() => {
     if (quiz && quiz.questions.length > 0) {
-      // Restore saved answer for this question
+      const currentQuestion = quiz.questions[currentQuestionIndex];
       const savedAnswer = answers[currentQuestionIndex];
-      setSelectedAnswer(savedAnswer !== undefined ? savedAnswer : null);
+      
+      if (currentQuestion.type === 'multi') {
+        // Multi-select question
+        setSelectedAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
+        setSelectedAnswer(null);
+      } else {
+        // Single-select question
+        setSelectedAnswer(typeof savedAnswer === 'number' ? savedAnswer : null);
+        setSelectedAnswers([]);
+      }
     }
   }, [currentQuestionIndex, answers, quiz]);
 
@@ -161,16 +171,25 @@ function QuizPage() {
     
     // Save current answer (if any) or mark as unanswered
     setAnswers(prev => {
+      const currentQuestion = quiz?.questions[currentQuestionIndex];
+      let answerToSave;
+      
+      if (currentQuestion?.type === 'multi') {
+        answerToSave = selectedAnswers.length > 0 ? selectedAnswers : [];
+      } else {
+        answerToSave = selectedAnswer !== null ? selectedAnswer : -1; // -1 means unanswered
+      }
+      
       const newAnswers = {
         ...prev,
-        [currentQuestionIndex]: selectedAnswer !== null ? selectedAnswer : -1 // -1 means unanswered
+        [currentQuestionIndex]: answerToSave
       };
       
       // Move to next question or finish quiz
       if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
         const nextQuestionIndex = currentQuestionIndex + 1;
         setCurrentQuestionIndex(nextQuestionIndex);
-        setSelectedAnswer(newAnswers[nextQuestionIndex] || null);
+        // Answer restoration will be handled by useEffect
       } else {
         // Quiz completed - submit with current answers
         setTimeout(() => handleSubmitQuiz(newAnswers), 100);
@@ -181,7 +200,22 @@ function QuizPage() {
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex);
+    if (!quiz) return;
+    
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    
+    if (currentQuestion.type === 'multi') {
+      // Multi-select: toggle answer in array
+      setSelectedAnswers(prev => {
+        const newAnswers = prev.includes(answerIndex) 
+          ? prev.filter(i => i !== answerIndex)  // Remove if already selected
+          : [...prev, answerIndex];              // Add if not selected
+        return newAnswers;
+      });
+    } else {
+      // Single-select: set single answer
+      setSelectedAnswer(answerIndex);
+    }
   };
 
   const handleNextQuestion = () => {
@@ -193,11 +227,20 @@ function QuizPage() {
       [currentQuestionIndex]: timeLeft
     }));
     
-    // Always save current answer (even if null)
+    // Always save current answer (even if null/empty)
     setAnswers(prev => {
+      const currentQuestion = quiz?.questions[currentQuestionIndex];
+      let answerToSave;
+      
+      if (currentQuestion?.type === 'multi') {
+        answerToSave = selectedAnswers.length > 0 ? selectedAnswers : [];
+      } else {
+        answerToSave = selectedAnswer;
+      }
+      
       const newAnswers = {
         ...prev,
-        [currentQuestionIndex]: selectedAnswer
+        [currentQuestionIndex]: answerToSave
       };
       
       if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
@@ -225,9 +268,18 @@ function QuizPage() {
     
     // Save current answer before going back
     setAnswers(prev => {
+      const currentQuestion = quiz?.questions[currentQuestionIndex];
+      let answerToSave;
+      
+      if (currentQuestion?.type === 'multi') {
+        answerToSave = selectedAnswers.length > 0 ? selectedAnswers : [];
+      } else {
+        answerToSave = selectedAnswer;
+      }
+      
       const newAnswers = {
         ...prev,
-        [currentQuestionIndex]: selectedAnswer
+        [currentQuestionIndex]: answerToSave
       };
       
       if (currentQuestionIndex > 0) {
@@ -241,7 +293,7 @@ function QuizPage() {
     });
   };
 
-  const handleSubmitQuiz = async (finalAnswers?: { [key: number]: number | null }) => {
+  const handleSubmitQuiz = async (finalAnswers?: { [key: number]: number | null | number[] }) => {
     setTimerActive(false); // Stop timer
     setIsSubmitting(true);
     
@@ -265,10 +317,29 @@ function QuizPage() {
           timeSpent: totalTimeSpent,
           answers: Object.entries(answersToSubmit).map(([questionIndex, answerIndex]) => {
             const question = quiz.questions[parseInt(questionIndex)];
-            return {
-              questionId: question.id,
-              answer: (answerIndex !== null && answerIndex >= 0) ? question.answers[answerIndex].content : ""
-            };
+            
+            if (question.type === 'multi' && Array.isArray(answerIndex)) {
+              // Multi-select: join multiple answers with comma
+              const selectedContents = answerIndex
+                .filter(index => index >= 0 && index < question.answers.length)
+                .map(index => question.answers[index].content);
+              return {
+                questionId: question.id,
+                answer: selectedContents.join(', ')
+              };
+            } else if (typeof answerIndex === 'number' && answerIndex >= 0) {
+              // Single-select: get single answer
+              return {
+                questionId: question.id,
+                answer: question.answers[answerIndex].content
+              };
+            } else {
+              // No answer selected
+              return {
+                questionId: question.id,
+                answer: ""
+              };
+            }
           })
         };
 
@@ -549,32 +620,38 @@ function QuizPage() {
 
           {/* Answer Options */}
           <div className="space-y-2">
-            {currentQuestion.answers && currentQuestion.answers.length > 0 ? currentQuestion.answers.map((answer, index) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(index)}
-                className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
-                  selectedAnswer === index
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    selectedAnswer === index
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-gray-300'
-                  }`}>
-                    {selectedAnswer === index && (
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
+            {currentQuestion.answers && currentQuestion.answers.length > 0 ? currentQuestion.answers.map((answer, index) => {
+              const isSelected = currentQuestion.type === 'multi' 
+                ? selectedAnswers.includes(index)
+                : selectedAnswer === index;
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSelect(index)}
+                  className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+                    isSelected
+                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected
+                        ? 'border-purple-500 bg-purple-500'
+                        : 'border-gray-300'
+                    }`}>
+                      {isSelected && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <Text size="small" className="font-medium">
+                      {answer.content}
+                    </Text>
                   </div>
-                  <Text size="small" className="font-medium">
-                    {answer.content}
-                  </Text>
-                </div>
-              </button>
-            )) : (
+                </button>
+              );
+            }) : (
               <div className="text-center py-6">
                 <Text size="small" className="text-gray-500">
                   Không có tùy chọn trả lời
@@ -597,13 +674,17 @@ function QuizPage() {
             Trước
           </Button>
           
-          <Button
-            variant="primary"
-            size="medium"
-            onClick={handleNextQuestion}
-            disabled={selectedAnswer === null}
-            className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
-          >
+           <Button
+             variant="primary"
+             size="medium"
+             onClick={handleNextQuestion}
+             disabled={
+               currentQuestion.type === 'multi' 
+                 ? selectedAnswers.length === 0
+                 : selectedAnswer === null
+             }
+             className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
+           >
             {currentQuestionIndex === quiz.questions.length - 1 ? (
               <>
                 <Icon icon="zi-check" />

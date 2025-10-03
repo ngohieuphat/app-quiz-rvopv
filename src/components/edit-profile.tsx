@@ -43,14 +43,15 @@ function EditProfilePage() {
           isDefault: firstAddress.isDefault || true
         };
       } 
-      // Kiểm tra nếu user.address là object
-      else if (user.address && typeof user.address === 'object') {
+      // Kiểm tra nếu user.address là object (nhưng không phải array)
+      else if (user.address && typeof user.address === 'object' && !Array.isArray(user.address)) {
+        const addr = user.address as any;
         addressData = {
-          street: user.address.street || "",
-          ward: user.address.ward || "",
-          district: user.address.district || "",
-          city: user.address.city || "",
-          isDefault: user.address.isDefault || true
+          street: addr.street || "",
+          ward: addr.ward || "",
+          district: addr.district || "",
+          city: addr.city || "",
+          isDefault: addr.isDefault || true
         };
       }
 

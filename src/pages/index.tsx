@@ -2,89 +2,84 @@ import { Button, Icon, Page } from "zmp-ui";
 import { useNavigate } from "zmp-ui";
 import { useState, useEffect } from "react";
 import newBackground from "@/static/new-background.png";
-import useZaloUserData from "../hook/useZaloUserData";
-import { createUser } from "../api/auth";
+import { getLoadingScreens } from "../api/loadingscreen";
 
 function HomePage() {
   const navigate = useNavigate();
-  const { userInfo, phoneNumber, fetchUserData, isLoading } = useZaloUserData();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [shouldFetch, setShouldFetch] = useState(false);
+  const [loadingScreen, setLoadingScreen] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect để xử lý khi state đã update
   useEffect(() => {
-    const handleUserData = async () => {
-      if (shouldFetch && !isLoading) {
-        // Điều kiện 1: User đồng ý chia sẻ
-        if (userInfo && phoneNumber) {
-          // Gọi API createUser
-          try {
-            const userData = {
-              userId: userInfo.id,
-              name: userInfo.name,
-              phone: phoneNumber.number,
-              avatar: userInfo.avatar,
-              idByOA: userInfo.idByOA || "",
-              followedOA: userInfo.followedOA || false,
-              isSensitive: userInfo.isSensitive || false,
-            };
-            
-            await createUser(userData);
-          } catch (error: any) {
-            // Silent error handling
-          }
+    const fetchLoadingScreen = async () => {
+      try {
+        const response = await getLoadingScreens();
+        if (response && response.success && response.data && response.data.length > 0) {
+          // Lấy loading screen đầu tiên có isActive = true
+          const activeScreen = response.data.find(screen => screen.isActive) || response.data[0];
+          setLoadingScreen(activeScreen);
         }
-        // Điều kiện 2: User từ chối chia sẻ -> không gọi API
-        
-        // Chuyển page trong cả 2 trường hợp
-        navigate("/quiz-selection");
-        setIsProcessing(false);
-        setShouldFetch(false);
+      } catch (error) {
+        console.error("Error fetching loading screen:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    handleUserData();
-  }, [ isLoading, shouldFetch, navigate]);
+    fetchLoadingScreen();
+  }, []);
 
-  const handleStartQuiz = async () => {
-    try {
-      setIsProcessing(true);
-      
-      // Gọi hook để lấy thông tin user từ Zalo khi bấm button
-      await fetchUserData();
-      
-      // Trigger useEffect để xử lý khi state đã update
-      setShouldFetch(true);
-      
-    } catch (error: any) {
-      // Vẫn chuyển trang dù có lỗi
-      navigate("/quiz-selection");
-      setIsProcessing(false);
-    }
+  const handleStartQuiz = () => {
+    // Chuyển trang trực tiếp
+    navigate("/quiz-selection");
   };
   
+  if (isLoading) {
+    return (
+      <Page className="p-0 m-0 h-screen overflow-hidden">
+        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải...</p>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
   return (
-        <Page className="p-0 m-0 h-screen overflow-hidden">  
+    <Page className="p-0 m-0 h-screen overflow-hidden">  
       <div className="h-full w-full relative">
+        {/* Hiển thị loading screen từ API hoặc fallback background */}
         <img 
-          src={newBackground}
-          alt="Background"
+          src={loadingScreen?.url || newBackground}
+          alt={loadingScreen?.filename || "Background"}
           className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to default background if loading screen fails to load
+            (e.target as HTMLImageElement).src = newBackground;
+          }}
         />
-      {/* CTA Button overlay ở trên bottom navigation */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center">
-        <Button
-          variant="primary"
-          size="medium"
-          className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-1 px-8 rounded-2xl shadow-lg"
-          suffixIcon={<Icon icon="zi-arrow-right" />}
-          onClick={handleStartQuiz}
-          disabled={isProcessing}
-        >
-          {isProcessing ? "ĐANG XỬ LÝ..." : "KIỂM TRA NGAY"}
-        </Button>
+        
+        {/* Loading screen info overlay (optional) */}
+        {loadingScreen && (
+          <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-xs">
+            {loadingScreen.filename}
+          </div>
+        )}
+        
+        {/* CTA Button overlay ở trên bottom navigation */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center">
+          <Button
+            variant="primary"
+            size="medium"
+            className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-1 px-8 rounded-2xl shadow-lg"
+            suffixIcon={<Icon icon="zi-arrow-right" />}
+            onClick={handleStartQuiz}
+          >
+            KIỂM TRA NGAY
+          </Button>
+        </div>
       </div>
-    </div>
     </Page>
   );
 }

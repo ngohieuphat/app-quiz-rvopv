@@ -227,7 +227,7 @@ function QuizSelectionPage() {
         </Box>
 
         {/* Description */}
-        <Box className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4 shadow-lg">
+        {/* <Box className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4 shadow-lg">
           <div className="flex items-start space-x-3">
             <Icon icon="zi-heart" className="text-purple-600 mt-1 animate-pulse flex-shrink-0" />
             <Text size="normal" className="text-gray-700 leading-relaxed">
@@ -238,7 +238,7 @@ function QuizSelectionPage() {
               cộng đồng. Mỗi câu trả lời đúng sẽ giúp bạn tích lũy điểm thưởng và nhận được những phần quà hấp dẫn từ RVOPV.
             </Text>
           </div>
-        </Box>
+        </Box> */}
 
         {/* Quiz Templates */}
         {isLoading ? (
