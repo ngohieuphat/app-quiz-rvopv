@@ -250,14 +250,15 @@ function QuizSelectionPage() {
             </div>
           </Box>
         ) : (
-          quizTemplates.map((quiz, index) => (
+          <div className="space-y-3 sm:space-y-4">
+            {quizTemplates.map((quiz, index) => (
             <Box 
               key={quiz.id} 
               className={`bg-gradient-to-r ${
                 index % 2 === 0 
                   ? 'from-emerald-500 to-teal-600' 
                   : 'from-orange-500 to-pink-600'
-              } rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-xl relative overflow-hidden transform hover:scale-105 transition-all duration-300`}
+              } rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-xl relative overflow-hidden transform hover:scale-105 transition-all duration-300 w-full`}
             >
               {/* Decorative elements */}
               <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex space-x-1">
@@ -265,9 +266,9 @@ function QuizSelectionPage() {
                 <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-pulse"></div>
               </div>
 
-              <div className="min-h-[120px] sm:h-36 flex flex-col justify-between">
+              <div className="h-[140px] sm:h-36 flex flex-col justify-between">
                 {/* Top Section: Image and Title */}
-                <div className="flex items-start space-x-2 sm:space-x-4">
+                <div className="flex items-start space-x-2 sm:space-x-4 h-full">
                   {/* Quiz Image */}
                   {quiz.url && (
                     <div className="flex-shrink-0 w-20 h-20 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden border-2 sm:border-3 border-white shadow-lg">
@@ -280,7 +281,7 @@ function QuizSelectionPage() {
                   )}
                   
                   {/* Quiz Content */}
-                  <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                  <div className="flex-1 space-y-1 sm:space-y-2 min-w-0 flex flex-col justify-center">
                     <Text.Title size="small" className={`font-bold leading-tight text-sm sm:text-lg ${
                       index % 2 === 0 ? 'text-green-100' : 'text-orange-100'
                     }`}>
@@ -315,7 +316,8 @@ function QuizSelectionPage() {
                 </div>
               </div>
             </Box>
-          ))
+            ))}
+          </div>
         )}
           <Navbar
             activeTab="quiz-selection"

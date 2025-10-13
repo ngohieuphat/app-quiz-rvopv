@@ -99,7 +99,7 @@ const Layout = () => {
             <Route path="/quiz-result/:id" element={<QuizResultPage />}></Route>
             <Route path="/profile" element={<ProfilePage />}></Route>
             <Route path="/gifts" element={<GiftsPage />}></Route>
-        <Route path="/quiz-history" element={<ViewQuizHistoryPage />}></Route>
+             <Route path="/quiz-history" element={<ViewQuizHistoryPage />}></Route>
             <Route path="/edit-profile" element={<EditProfilePage />}></Route>
           </AnimationRoutes>
         </ZMPRouter>
