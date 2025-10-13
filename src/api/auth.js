@@ -191,6 +191,118 @@ export const checkAttempt = async (userId, quizId) => {
       throw error;
     }
   };
+
+// Test message token
+export const testMessageToken = async (messageToken, userId) => {
+    if (!messageToken || !userId) {
+      return null;
+    }
+  
+    const requestConfig = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      baseURL:BASE_URL,
+      url: `/api/test/test-message-token`,
+      data: {
+        messageToken: messageToken,
+        userId: userId,
+      },
+    };
+  
+    try {
+      const result = await axios(requestConfig);
+      return result.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+// Get dynamic form config
+export const getDynamicFormConfig = async () => {
+  const requestConfig = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    baseURL: BASE_URL,
+    url: `/api/miniApp/quiz/dynamic-form/form-config`,
+  };
+
+  try {
+    const result = await axios(requestConfig);
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get user form data
+export const getUserFormData = async (userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  const requestConfig = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    baseURL: BASE_URL,
+    url: `/api/miniApp/quiz/dynamic-form/users/${userId}/form-data`,
+  };
+
+  try {
+    const result = await axios(requestConfig);
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Submit dynamic form
+export const submitDynamicForm = async (userId, formData) => {
+  if (!userId || !formData) {
+    return null;
+  }
+
+  const requestConfig = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    baseURL: BASE_URL,
+    url: `/api/miniApp/quiz/dynamic-form/users/${userId}/submit-form`,
+    data: formData,
+  };
+
+  try {
+    const result = await axios(requestConfig);
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+  };
+
+// Get Vietnamese provinces and districts
+export const getVietnameseProvinces = async () => {
+  const requestConfig = {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    baseURL: "https://provinces.open-api.vn",
+    url: `/api/v1/?depth=2`,
+  };
+
+  try {
+    const result = await axios(requestConfig);
+    return result.data;
+  } catch (error) {
+    throw error;
+  }
+};
   
   
   

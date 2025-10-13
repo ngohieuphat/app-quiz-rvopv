@@ -2,6 +2,7 @@ import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import { openWebview } from "zmp-sdk/apis";
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -48,10 +49,17 @@ function ProfilePage() {
     // TODO: Handle add click
   };
 
+  const handleHelpSupport = () => {
+    // Mở trang hỗ trợ trong Zalo webview
+    openWebview({
+      url: "https://zalo.me/2674761099009385171",
+    });
+  };
+
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center space-x-2">
         
           <div>
@@ -222,7 +230,7 @@ function ProfilePage() {
           {/* Help & Support */}
           <Box className="bg-white rounded-2xl p-4 shadow-lg">
             <button 
-              onClick={() => {}}
+              onClick={handleHelpSupport}
               className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors"
             >
               <div className="flex items-center space-x-3">
@@ -258,7 +266,9 @@ function ProfilePage() {
           onTabChange={handleNavTabChange}
           onAddClick={handleAddClick}
           onZaloClick={() =>
-            window.open("https://zalo.me/2674761099009385171", "_blank")
+            openWebview({
+              url: "https://zalo.me/2674761099009385171",
+            })
           }
         />
       </div>

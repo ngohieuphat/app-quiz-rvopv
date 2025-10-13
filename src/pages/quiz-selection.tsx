@@ -5,6 +5,7 @@ import { createUser, checkAttempt } from "../api/auth";
 import { useState, useEffect } from "react";
 import useZaloUserData from "../hook/useZaloUserData";
 import Navbar from "../components/Navbar";
+import { openWebview } from "zmp-sdk/apis";
 // Define quiz interface
 interface QuizQuestion {
   id: number;
@@ -183,7 +184,7 @@ function QuizSelectionPage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-full overflow-hidden animate-pulse">
             {user?.avatar ? (
@@ -320,9 +321,11 @@ function QuizSelectionPage() {
             activeTab="quiz-selection"
             onTabChange={handleNavTabChange}
             onAddClick={handleAddClick}
-            onZaloClick={() =>
-              window.open("https://zalo.me/2674761099009385171", "_blank")
-            }
+          onZaloClick={() =>
+            openWebview({
+              url: "https://zalo.me/2674761099009385171",
+            })
+          }
           />
       </div>
     </Page>

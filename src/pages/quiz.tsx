@@ -1,8 +1,9 @@
 import { Button, Icon, Page, Text, Box, useNavigate, useLocation } from "zmp-ui";
 import { useState, useEffect, useRef } from "react";
 import { getQuizTemplateById, submitQuizSubmission } from "../api/quiz";
-import { createUserGift } from "../api/auth";
+import { createUserGift, checkUserExists } from "../api/auth";
 import useAuth from "../hook/authhook";
+import Swal from 'sweetalert2';
 
 // Define quiz interfaces
 interface QuizAnswer {
@@ -67,6 +68,7 @@ function QuizPage() {
   const [timerActive, setTimerActive] = useState(false);
   const [questionTimes, setQuestionTimes] = useState<{ [key: number]: number }>({});
   const timeUpHandled = useRef(false);
+  const [apiResult, setApiResult] = useState<any>(null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -87,7 +89,21 @@ function QuizPage() {
         const response = await getQuizTemplateById(parseInt(id));
         
         if (response && response.success && response.data && response.data.quiz) {
-          setQuiz(response.data.quiz);
+          // Randomize answer order for each question
+          const randomizedQuiz = {
+            ...response.data.quiz,
+            questions: response.data.quiz.questions.map(question => ({
+              ...question,
+              answers: question.answers.sort(() => Math.random() - 0.5)
+            }))
+          };
+          
+          setQuiz(randomizedQuiz);
+          // Reset all answers when loading new quiz
+          setAnswers({});
+          setSelectedAnswer(null);
+          setSelectedAnswers([]);
+          setCurrentQuestionIndex(0);
         } else {
           setQuiz(null);
         }
@@ -135,11 +151,16 @@ function QuizPage() {
       const savedTime = questionTimes[currentQuestionIndex];
       if (savedTime !== undefined) {
         setTimeLeft(savedTime);
+        // If time is 0, don't start timer (time was up)
+        if (savedTime === 0) {
+          setTimerActive(false);
+        } else {
+          setTimerActive(true);
+        }
       } else {
         setTimeLeft(30);
+        setTimerActive(true);
       }
-      
-      setTimerActive(true);
     }
   }, [currentQuestionIndex, quiz, questionTimes]);
 
@@ -151,11 +172,13 @@ function QuizPage() {
       
       if (currentQuestion.type === 'multi') {
         // Multi-select question
-        setSelectedAnswers(Array.isArray(savedAnswer) ? savedAnswer : []);
+        const restoredAnswers = Array.isArray(savedAnswer) ? savedAnswer : [];
+        setSelectedAnswers(restoredAnswers);
         setSelectedAnswer(null);
       } else {
         // Single-select question
-        setSelectedAnswer(typeof savedAnswer === 'number' ? savedAnswer : null);
+        const restoredAnswer = typeof savedAnswer === 'number' ? savedAnswer : null;
+        setSelectedAnswer(restoredAnswer);
         setSelectedAnswers([]);
       }
     }
@@ -168,6 +191,12 @@ function QuizPage() {
     
     timeUpHandled.current = true;
     setTimerActive(false);
+    
+    // Save current time as 0 when time is up
+    setQuestionTimes(prev => ({
+      ...prev,
+      [currentQuestionIndex]: 0
+    }));
     
     // Save current answer (if any) or mark as unanswered
     setAnswers(prev => {
@@ -184,6 +213,7 @@ function QuizPage() {
         ...prev,
         [currentQuestionIndex]: answerToSave
       };
+      
       
       // Move to next question or finish quiz
       if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
@@ -343,6 +373,7 @@ function QuizPage() {
           })
         };
 
+
         // Submit to API and get result
         apiResult = await submitQuizSubmission(submissionData);
         
@@ -357,6 +388,48 @@ function QuizPage() {
             await createUserGift(user.userId, giftData);
           } catch (giftError) {
             // Don't block the flow if gift creation fails
+          }
+
+          // Check if user has address after successful submission
+          try {
+            const userCheckResult = await checkUserExists(user.userId);
+            if (userCheckResult && userCheckResult.success && userCheckResult.data) {
+              const hasAddress = userCheckResult.data.hasAddress && 
+                               userCheckResult.data.user && 
+                               userCheckResult.data.user.address && 
+                               userCheckResult.data.user.address.length > 0;
+              
+              if (!hasAddress) {
+                // User doesn't have address, show SweetAlert2
+                setApiResult(apiResult);
+                
+                Swal.fire({
+                  title: 'Chúc mừng!',
+                  text: 'Bạn đã hoàn thành quiz! Để nhận phần thưởng, vui lòng cập nhật thông tin địa chỉ của bạn. Chỉ cần 1 bước cập nhật thông tin để nhận thưởng.',
+                  icon: 'success',
+                  showCancelButton: false,
+                  confirmButtonText: 'Cập nhật thông tin',
+                  confirmButtonColor: '#10b981',
+                  allowOutsideClick: false,
+                  allowEscapeKey: false
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    // Navigate to edit profile
+                    navigate("/edit-profile", { 
+                      state: { 
+                        fromQuiz: true,
+                        quizResult: apiResult,
+                        quizId: id
+                      } 
+                    });
+                  }
+                });
+                
+                return; // Don't navigate to result page yet
+              }
+            }
+          } catch (addressError) {
+            // If address check fails, continue to result page
           }
         }
       }
@@ -413,6 +486,7 @@ function QuizPage() {
     });
   };
 
+
   if (isLoading) {
     return (
       <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
@@ -468,6 +542,7 @@ function QuizPage() {
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
+  
   
   // Additional safety check for current question
   if (!currentQuestion) {
@@ -543,14 +618,18 @@ function QuizPage() {
             <Text.Title size="normal" className="text-purple-600 font-bold mb-2">
               {quiz.name}
             </Text.Title>
-            <div className="flex items-center justify-center space-x-3 text-xs text-gray-600">
-              <div className="flex items-center space-x-1">
-                <Icon icon="zi-chat" className="text-blue-500 text-sm" />
-                <span>{quiz.questions.length} câu hỏi</span>
+            <div className="flex items-baseline justify-center space-x-3">
+              <div className="flex items-baseline space-x-1">
+                <Icon icon="zi-chat" className="text-blue-500 text-sm flex-shrink-0" style={{ marginTop: '1px' }} />
+                <Text size="xSmall" className="text-gray-600">
+                  {quiz.questions.length} câu hỏi
+                </Text>
               </div>
-              <div className="flex items-center space-x-1">
-                <Icon icon="zi-star" className="text-yellow-500 text-sm" />
-                <span>{quiz.totalPoints} điểm</span>
+              <div className="flex items-baseline space-x-1">
+                <Icon icon="zi-star" className="text-yellow-500 text-sm flex-shrink-0" style={{ marginTop: '1px' }} />
+                <Text size="xSmall" className="text-gray-600">
+                  {quiz.totalPoints} điểm
+                </Text>
               </div>
             </div>
           </div>
@@ -562,6 +641,34 @@ function QuizPage() {
             <Text.Title size="normal" className="text-gray-800 font-bold leading-relaxed">
               {currentQuestion.content.text}
             </Text.Title>
+            
+            {/* Question Type Indicator */}
+            <div className="mt-2 flex items-center justify-center">
+              <div className={`inline-flex items-baseline space-x-1 px-3 py-1 rounded-full ${
+                currentQuestion.type === 'multi' 
+                  ? 'bg-green-100 border border-green-200'
+                  : 'bg-blue-100 border border-blue-200'
+              }`}>
+                <Icon 
+                  icon={currentQuestion.type === 'multi' ? 'zi-check-circle' : 'zi-info-circle'} 
+                  className={`text-xs flex-shrink-0 ${
+                    currentQuestion.type === 'multi' ? 'text-green-700' : 'text-blue-700'
+                  }`}
+                  style={{ marginTop: '1px' }}
+                />
+                <Text 
+                  size="xSmall" 
+                  className={`font-medium ${
+                    currentQuestion.type === 'multi' ? 'text-green-700' : 'text-blue-700'
+                  }`}
+                >
+                  {currentQuestion.type === 'multi' 
+                    ? 'Chọn nhiều đáp án' 
+                    : 'Chọn 1 đáp án'
+                  }
+                </Text>
+              </div>
+            </div>
           </div>
 
           {/* Media Content */}
@@ -625,23 +732,35 @@ function QuizPage() {
                 ? selectedAnswers.includes(index)
                 : selectedAnswer === index;
               
+              const isTimeUp = questionTimes[currentQuestionIndex] === 0;
+              
               return (
                 <button
                   key={index}
-                  onClick={() => handleAnswerSelect(index)}
+                  onClick={() => !isTimeUp && handleAnswerSelect(index)}
+                  disabled={isTimeUp}
                   className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
                     isSelected
                       ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      : isTimeUp
+                      ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                    <div className={`w-5 h-5 border-2 flex items-center justify-center flex-shrink-0 ${
+                      currentQuestion.type === 'multi' 
+                        ? 'rounded border-2' // Square for multi-select
+                        : 'rounded-full'     // Circle for single-select
+                    } ${
                       isSelected
                         ? 'border-purple-500 bg-purple-500'
                         : 'border-gray-300'
                     }`}>
-                      {isSelected && (
+                      {isSelected && currentQuestion.type === 'multi' && (
+                        <Icon icon="zi-check" className="text-white text-xs" />
+                      )}
+                      {isSelected && currentQuestion.type !== 'multi' && (
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       )}
                     </div>
@@ -667,7 +786,10 @@ function QuizPage() {
             variant="secondary"
             size="medium"
             onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
+            disabled={
+              currentQuestionIndex === 0 || 
+              (questionTimes[currentQuestionIndex - 1] !== undefined && questionTimes[currentQuestionIndex - 1] === 0)
+            }
             className="flex-1"
           >
             <Icon icon="zi-arrow-left" />
@@ -699,6 +821,7 @@ function QuizPage() {
           </Button>
         </div>
       </div>
+
     </Page>
   );
 }

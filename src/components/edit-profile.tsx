@@ -1,83 +1,235 @@
-import { Button, Icon, Page, Text, Box, useNavigate, Input } from "zmp-ui";
+import { Button, Icon, Page, Text, Box, useNavigate, useLocation, Input } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { useState, useEffect } from "react";
-import { updateUserPharmacy } from "../api/auth";
+import { getDynamicFormConfig, getUserFormData, submitDynamicForm, getVietnameseProvinces } from "../api/auth";
 import Navbar from "./Navbar";
+import { showToast, openWebview } from "zmp-sdk/apis";
 
 function EditProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, refreshUserData } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    pharmacyName: "",
-    address: {
-      street: "",
-      ward: "",
-      district: "",
-      city: "",
-      isDefault: true
-    }
-  });
+  const [formData, setFormData] = useState<any>({});
+  const [formConfig, setFormConfig] = useState<any>(null);
+  const [hasExistingData, setHasExistingData] = useState(false);
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   useEffect(() => {
-    // Initialize form with user data if available
-    if (user) {
-      
-      // Lấy dữ liệu address từ user
-      let addressData = {
-        street: "",
-        ward: "",
-        district: "",
-        city: "",
-        isDefault: true
-      };
-
-      // Kiểm tra nếu user.address là array và có phần tử đầu tiên
-      if (Array.isArray(user.address) && user.address.length > 0) {
-        const firstAddress = user.address[0];
-        addressData = {
-          street: firstAddress.street || "",
-          ward: firstAddress.ward || "",
-          district: firstAddress.district || "",
-          city: firstAddress.city || "",
-          isDefault: firstAddress.isDefault || true
-        };
-      } 
-      // Kiểm tra nếu user.address là object (nhưng không phải array)
-      else if (user.address && typeof user.address === 'object' && !Array.isArray(user.address)) {
-        const addr = user.address as any;
-        addressData = {
-          street: addr.street || "",
-          ward: addr.ward || "",
-          district: addr.district || "",
-          city: addr.city || "",
-          isDefault: addr.isDefault || true
-        };
+    const initializeForm = async () => {
+      if (!user?.userId) {
+        return;
       }
 
-      setFormData({
-        pharmacyName: user.pharmacyName || "",
-        address: addressData
-      });
-    }
+      try {
+        setIsLoading(true);
+        
+        // Always get form config first to know the structure
+        const config = await getDynamicFormConfig();
+        
+        if (config && config.success && config.data) {
+          // Sort dynamic fields by fieldType: text -> dynamic_select -> select
+          const sortedConfig = { ...config.data };
+          if (sortedConfig.dynamicFields && Array.isArray(sortedConfig.dynamicFields)) {
+            sortedConfig.dynamicFields = sortedConfig.dynamicFields.sort((a: any, b: any) => {
+              const typeOrder = { 'text': 1, 'dynamic_select': 2, 'select': 3 };
+              const aOrder = typeOrder[a.fieldType as keyof typeof typeOrder] || 999;
+              const bOrder = typeOrder[b.fieldType as keyof typeof typeOrder] || 999;
+              return aOrder - bOrder;
+            });
+          }
+          
+          setFormConfig(sortedConfig);
+          
+          // Initialize empty form data based on config
+          const initialData: any = {};
+          
+          // Process dynamic fields
+          if (sortedConfig.dynamicFields && Array.isArray(sortedConfig.dynamicFields)) {
+            sortedConfig.dynamicFields.forEach((field: any) => {
+              initialData[field.fieldKey] = "";
+            });
+          }
+          
+          // Then check if user has existing form data
+          const userFormData = await getUserFormData(user.userId);
+          
+          if (userFormData && userFormData.success && userFormData.data) {
+            // User has existing data - merge with config structure
+            setHasExistingData(true);
+            
+            // Merge data properly
+            const mergedData = { ...initialData };
+            
+            // Merge dynamic form data
+            if (userFormData.data.dynamicFormData) {
+              Object.keys(userFormData.data.dynamicFormData).forEach(key => {
+                mergedData[key] = userFormData.data.dynamicFormData[key] || "";
+              });
+            }
+            
+            setFormData(mergedData);
+          } else {
+            // User doesn't have data - use empty config structure
+            setHasExistingData(false);
+            setFormData(initialData);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing form:", error);
+        // Fallback to basic structure
+        const fallbackData = {
+          province: "",
+          district: "",
+          addressDetail: "",
+          company_organization: "",
+          address: "",
+          role: ""
+        };
+        setFormData(fallbackData);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeForm();
   }, [user]);
 
-  const handleInputChange = (field: string, value: string) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...(prev[parent as keyof typeof prev] as any),
-          [child]: value
+  // Load Vietnamese provinces
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const provincesData = await getVietnameseProvinces();
+        setProvinces(provincesData);
+      } catch (error) {
+        console.error("Error loading provinces:", error);
+      }
+    };
+
+    loadProvinces();
+  }, []);
+
+  // Load districts when province changes
+  useEffect(() => {
+    const loadDistricts = async () => {
+      // Check both province and province_city fields
+      const provinceValue = formData.province || formData.province_city;
+      if (!provinceValue || !provinces.length) return;
+
+      try {
+        setLoadingDistricts(true);
+        
+        // Find selected province (handle both names and codes)
+        const selectedProvince = provinces.find(p => 
+          p.code.toString() === provinceValue.toString() || 
+          p.name === provinceValue ||
+          p.codename === provinceValue
+        );
+        
+        if (selectedProvince && selectedProvince.districts) {
+          setDistricts(selectedProvince.districts);
+          
+          // Reset district selection if current district is not in new districts
+          if (formData.district) {
+            const districtExists = selectedProvince.districts.find(d => 
+              d.code.toString() === formData.district.toString() ||
+              d.name === formData.district ||
+              d.codename === formData.district
+            );
+            if (!districtExists) {
+              setFormData(prev => ({ ...prev, district: "" }));
+            }
+          }
         }
-      }));
-    } else {
+      } catch (error) {
+        console.error("Error loading districts:", error);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+
+    loadDistricts();
+  }, [formData.province, formData.province_city, provinces]);
+
+  // useEffect for swipe gesture
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      
+      const diffX = endX - startX; // Swipe từ trái sang phải
+      const diffY = Math.abs(endY - startY);
+      
+      // Swipe từ trái sang phải (ít nhất 50px) và không quá nhiều theo chiều dọc
+      if (diffX > 50 && diffY < 100 && startX < 50) {
+        handleGoBack();
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
+  const handleInputChange = (field: string, value: string) => {
       setFormData(prev => ({
         ...prev,
         [field]: value
       }));
+  };
+
+  // Format data before sending to server (convert names to readable format)
+  const formatFormDataForSubmission = (data: any) => {
+    const formattedData = { ...data };
+    
+    // Find province and district names for better readability
+    const provinceField = formattedData.province || formattedData.province_city;
+    
+    if (provinceField && provinces.length > 0) {
+      const provinceObj = provinces.find(p => 
+        p.code.toString() === provinceField.toString() ||
+        p.name === provinceField ||
+        p.codename === provinceField
+      );
+      
+      if (provinceObj) {
+        // Update the correct field (province or province_city)
+        if (formattedData.province) {
+          formattedData.province = provinceObj.name;
+        }
+        if (formattedData.province_city) {
+          formattedData.province_city = provinceObj.name;
+        }
+      }
     }
+    
+    if (formattedData.district && districts.length > 0) {
+      const districtObj = districts.find(d => 
+        d.code.toString() === formattedData.district.toString() ||
+        d.name === formattedData.district ||
+        d.codename === formattedData.district
+      );
+      
+      if (districtObj) {
+        formattedData.district = districtObj.name; // Send name instead of code
+      }
+    }
+    
+    return formattedData;
   };
 
   const handleSave = async () => {
@@ -86,14 +238,46 @@ function EditProfilePage() {
       return;
     }
 
+    // Format data for server submission
+    const formattedData = formatFormDataForSubmission(formData);
+
     setIsLoading(true);
     try {
-      await updateUserPharmacy(user.userId, formData);
+      const result = await submitDynamicForm(user.userId, formattedData);
+      
       // Tự động cập nhật dữ liệu user sau khi lưu thành công
       await refreshUserData();
-      navigate("/profile");
-    } catch (error) {
-      console.error("Error updating pharmacy:", error);
+      
+      // Check if coming from quiz
+      const { fromQuiz, quizResult, quizId } = location.state || {};
+      
+      if (fromQuiz && quizResult && quizId) {
+        // Coming from quiz, show thank you message and go to quiz result
+        await showToast({
+          message: "Cảm ơn bạn đã điền thông tin!",
+        });
+        
+        // Wait a bit for toast to display and data to be ready
+        setTimeout(() => {
+          navigate(`/quiz-result/${quizId}`, { 
+            state: { 
+              apiResult: quizResult,
+              fromEditProfile: true
+            } 
+          });
+        }, 1500); // Wait 1.5 seconds
+      } else {
+        // Normal flow, go to profile
+        await showToast({
+          message: "Lưu thông tin thành công!",
+        });
+        navigate("/profile");
+      }
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      await showToast({
+        message: "Có lỗi xảy ra, vui lòng thử lại!",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +285,225 @@ function EditProfilePage() {
 
   const handleCancel = () => {
     navigate("/profile");
+  };
+
+  const handleGoBack = () => {
+    navigate("/profile");
+  };
+
+  // Get validation error message for a specific field
+  const getFieldValidationError = (fieldName: string) => {
+    switch (fieldName) {
+      case 'province_city':
+        const provinceValue = formData.province_city || formData.province;
+        if (!provinceValue || provinceValue.toString().trim() === "") {
+          return "Vui lòng chọn tỉnh/thành phố";
+        }
+        break;
+      case 'district':
+        const provinceValue2 = formData.province_city || formData.province;
+        if (provinceValue2 && provinceValue2.toString().trim() !== "") {
+          const districtValue = formData.district;
+          if (!districtValue || districtValue.toString().trim() === "") {
+            return "Vui lòng chọn quận/huyện";
+          }
+        }
+        break;
+      case 'address':
+        const addressValue = formData.address || formData.addressDetail;
+        if (!addressValue || addressValue.toString().trim() === "") {
+          return "Vui lòng nhập địa chỉ chi tiết";
+        }
+        break;
+    }
+    return null;
+  };
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    if (!formConfig) return false;
+    
+    let requiredFields: any[] = [];
+    
+    // Check dynamic fields
+    if (formConfig.dynamicFields && Array.isArray(formConfig.dynamicFields)) {
+      requiredFields = requiredFields.concat(
+        formConfig.dynamicFields
+          .filter((field: any) => field.isRequired)
+          .map((field: any) => ({ name: field.fieldKey, required: true }))
+      );
+    }
+    
+    // Additional validation for specific fields
+    const specificValidations = [
+      // Province/City validation
+      {
+        name: 'province_city',
+        isValid: () => {
+          const value = formData.province_city || formData.province;
+          return value && value.toString().trim() !== "";
+        }
+      },
+      // District validation - only if province is selected
+      {
+        name: 'district',
+        isValid: () => {
+          const provinceValue = formData.province_city || formData.province;
+          if (!provinceValue || provinceValue.toString().trim() === "") {
+            return true; // District not required if no province
+          }
+          const districtValue = formData.district;
+          return districtValue && districtValue.toString().trim() !== "";
+        }
+      },
+      // Address validation
+      {
+        name: 'address',
+        isValid: () => {
+          const value = formData.address || formData.addressDetail;
+          return value && value.toString().trim() !== "";
+        }
+      }
+    ];
+    
+    // Check dynamic required fields
+    const dynamicFieldsValid = requiredFields.every((field: any) => {
+      const value = formData[field.name];
+      return value && value.toString().trim() !== "";
+    });
+    
+    // Check specific field validations
+    const specificFieldsValid = specificValidations.every(validation => {
+      return validation.isValid();
+    });
+    
+    return dynamicFieldsValid && specificFieldsValid;
+  };
+
+  // Render form field based on config
+  const renderFormField = (field: any) => {
+    const { name, label, type, required, placeholder, options } = field;
+    const validationError = getFieldValidationError(name);
+
+    switch (type) {
+      case 'text':
+      case 'email':
+      case 'tel':
+        return (
+          <div key={name} className="space-y-2">
+            <Text size="normal" className="font-medium text-gray-700">
+              {label} {required && '*'}
+            </Text>
+            <Input
+              type={type}
+              placeholder={placeholder || `Nhập ${label.toLowerCase()}`}
+              value={formData[name] || ""}
+              onChange={(e) => handleInputChange(name, e.target.value)}
+              className={`w-full ${validationError ? 'border-red-500' : ''}`}
+            />
+            {validationError && (
+              <Text size="small" className="text-red-500">
+                {validationError}
+              </Text>
+            )}
+          </div>
+        );
+
+      case 'textarea':
+        return (
+          <div key={name} className="space-y-2">
+            <Text size="normal" className="font-medium text-gray-700">
+              {label} {required && '*'}
+            </Text>
+            <textarea
+              placeholder={placeholder || `Nhập ${label.toLowerCase()}`}
+              value={formData[name] || ""}
+              onChange={(e) => handleInputChange(name, e.target.value)}
+              className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${validationError ? 'border-red-500' : 'border-gray-300'}`}
+              rows={4}
+            />
+            {validationError && (
+              <Text size="small" className="text-red-500">
+                {validationError}
+              </Text>
+            )}
+          </div>
+        );
+
+      case 'select':
+      case 'dynamic_select':
+        return (
+          <div key={name} className="space-y-2">
+            <Text size="normal" className="font-medium text-gray-700">
+              {label} {required && '*'}
+            </Text>
+            <select
+              value={formData[name] || ""}
+              onChange={(e) => handleInputChange(name, e.target.value)}
+              className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white ${validationError ? 'border-red-500' : 'border-gray-300'}`}
+              disabled={name === 'district' && (!formData.province && !formData.province_city || loadingDistricts)}
+            >
+              <option value="">{placeholder || `Chọn ${label.toLowerCase()}`}</option>
+              
+              {/* Province options */}
+              {(name === 'province' || name === 'province_city') && provinces.map((province: any) => (
+                <option key={province.code} value={province.name}>
+                  {province.name}
+                </option>
+              ))}
+              
+              {/* District options */}
+              {name === 'district' && districts.map((district: any) => (
+                <option key={district.code} value={district.name}>
+                  {district.name}
+                </option>
+              ))}
+              
+              {/* Custom options from config */}
+              {name !== 'province' && name !== 'district' && options && Array.isArray(options) && options.map((option: any) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            
+            {/* Loading indicator for districts */}
+            {name === 'district' && loadingDistricts && (
+              <div className="flex items-center space-x-2 text-gray-500">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"></div>
+                <Text size="small">Đang tải quận/huyện...</Text>
+              </div>
+            )}
+            
+            {/* Validation error message */}
+            {validationError && (
+              <Text size="small" className="text-red-500">
+                {validationError}
+              </Text>
+            )}
+          </div>
+        );
+
+      default:
+        return (
+          <div key={name} className="space-y-2">
+            <Text size="normal" className="font-medium text-gray-700">
+              {label} {required && '*'}
+            </Text>
+            <Input
+              placeholder={placeholder || `Nhập ${label.toLowerCase()}`}
+              value={formData[name] || ""}
+              onChange={(e) => handleInputChange(name, e.target.value)}
+              className={`w-full ${validationError ? 'border-red-500' : ''}`}
+            />
+            {validationError && (
+              <Text size="small" className="text-red-500">
+                {validationError}
+              </Text>
+            )}
+          </div>
+        );
+    }
   };
 
   const handleNavTabChange = (tab: "quiz-selection" | "profile") => {
@@ -118,13 +521,13 @@ function EditProfilePage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center space-x-2">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
+        <div className="flex items-center space-x-3">
           <Button
-            variant="tertiary"
+            variant="secondary" 
             size="small"
-            onClick={handleCancel}
-            className="text-white"
+            onClick={handleGoBack}
+            className="text-white bg-white/20 hover:bg-white/30 flex items-center justify-center"
           >
             <Icon icon="zi-arrow-left" />
           </Button>
@@ -145,95 +548,56 @@ function EditProfilePage() {
                 Thông tin nhà thuốc
               </Text.Title>
               <Text size="small" className="text-gray-600">
-                Cập nhật thông tin nhà thuốc của bạn
+                {hasExistingData ? "Cập nhật thông tin nhà thuốc của bạn" : "Điền thông tin nhà thuốc của bạn"}
               </Text>
             </div>
 
-            {/* Pharmacy Name */}
-            <div className="space-y-2">
-              <Text size="normal" className="font-medium text-gray-700">
-                Tên nhà thuốc *
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <Text size="small" className="ml-3 text-gray-600">
+                  {hasExistingData ? "Đang tải dữ liệu..." : "Đang tải form..."}
               </Text>
-              <Input
-                placeholder="Nhập tên nhà thuốc"
-                value={formData.pharmacyName}
-                onChange={(e) => handleInputChange('pharmacyName', e.target.value)}
-                className="w-full"
-              />
             </div>
-
-
-            {/* Street */}
-            <div className="space-y-2">
-              <Text size="normal" className="font-medium text-gray-700">
-                Đường/Phố
+            ) : (
+              <>
+                {formConfig && (
+                  <>
+                    {/* Skip Fixed Fields - Use only DynamicFields */}
+                    {/* FixedFields removed - all fields now come from DynamicFields */}
+                    
+                    {/* Render Dynamic Fields */}
+                    {formConfig.dynamicFields && Array.isArray(formConfig.dynamicFields) && 
+                     formConfig.dynamicFields.length > 0 && (
+                      <>
+                        {formConfig.dynamicFields.map((field: any) => {
+                            const fieldConfig = {
+                              name: field.fieldKey,
+                              label: field.fieldLabel,
+                              type: field.fieldType,
+                              required: field.isRequired,
+                              placeholder: field.placeholder,
+                              options: field.fieldOptions,
+                              sortOrder: field.sortOrder
+                            };
+                            return renderFormField(fieldConfig);
+                          })}
+                      </>
+                    )}
+                    
+                    {/* No fields message */}
+                    {(!formConfig.fixedFields || Object.keys(formConfig.fixedFields).length === 0) &&
+                     (!formConfig.dynamicFields || formConfig.dynamicFields.length === 0) && (
+                      <div className="text-center py-6">
+                        <Text size="small" className="text-gray-500">
+                          Không có trường nào để hiển thị
               </Text>
-              <Input
-                placeholder="Nhập tên đường/phố"
-                value={formData.address.street}
-                onChange={(e) => handleInputChange('address.street', e.target.value)}
-                className="w-full"
-              />
             </div>
-
-            {/* Ward */}
-            <div className="space-y-2">
-              <Text size="normal" className="font-medium text-gray-700">
-                Phường/Xã
-              </Text>
-              <Input
-                placeholder="Nhập phường/xã"
-                value={formData.address.ward}
-                onChange={(e) => handleInputChange('address.ward', e.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            {/* District */}
-            <div className="space-y-2">
-              <Text size="normal" className="font-medium text-gray-700">
-                Quận/Huyện
-              </Text>
-              <Input
-                placeholder="Nhập quận/huyện"
-                value={formData.address.district}
-                onChange={(e) => handleInputChange('address.district', e.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            {/* City */}
-            <div className="space-y-2">
-              <Text size="normal" className="font-medium text-gray-700">
-                Thành phố/Tỉnh
-              </Text>
-              <Input
-                placeholder="Nhập thành phố/tỉnh"
-                value={formData.address.city}
-                onChange={(e) => handleInputChange('address.city', e.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            {/* Default Address Toggle */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div>
-                <Text size="normal" className="font-medium text-gray-700">
-                  Địa chỉ mặc định
-                </Text>
-                <Text size="small" className="text-gray-500">
-                  Sử dụng làm địa chỉ chính
-                </Text>
-              </div>
-              <Button
-                variant={formData.address.isDefault ? "primary" : "secondary"}
-                size="small"
-                onClick={() => handleInputChange('address.isDefault', (!formData.address.isDefault).toString())}
-                className={formData.address.isDefault ? "bg-green-500" : ""}
-              >
-                {formData.address.isDefault ? "Có" : "Không"}
-              </Button>
-            </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
           </div>
         </Box>
 
@@ -251,7 +615,7 @@ function EditProfilePage() {
             variant="primary"
             size="large"
             onClick={handleSave}
-            disabled={isLoading || !formData.pharmacyName}
+            disabled={isLoading || !isFormValid()}
             className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold py-3 rounded-xl shadow-lg"
           >
             {isLoading ? (
@@ -281,7 +645,9 @@ function EditProfilePage() {
           onTabChange={handleNavTabChange}
           onAddClick={handleAddClick}
           onZaloClick={() =>
-            window.open("https://zalo.me/2674761099009385171", "_blank")
+            openWebview({
+              url: "https://zalo.me/2674761099009385171",
+            })
           }
         />
       </div>

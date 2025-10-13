@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { openWebview } from "zmp-sdk/apis";
 
 interface NavbarProps {
   activeTab?: "quiz-selection" | "profile";
@@ -95,8 +96,10 @@ const Navbar: React.FC<NavbarProps> = ({
     if (onZaloClick) {
       onZaloClick();
     } else {
-      // Open Zalo link
-      window.open("https://zalo.me/2674761099009385171", "_blank");
+      // Open Zalo link using ZMP openWebview
+      openWebview({
+        url: "https://zalo.me/2674761099009385171",
+      });
     }
   };
 

@@ -2,6 +2,7 @@ import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
+import { openWebview } from "zmp-sdk/apis";
 
 function GiftsPage() {
   const navigate = useNavigate();
@@ -44,6 +45,39 @@ function GiftsPage() {
       setIsLoading(false);
     }
   }, []); // Empty dependency array - chỉ chạy 1 lần khi mount
+
+  // useEffect for swipe gesture
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      
+      const diffX = endX - startX; // Swipe từ trái sang phải
+      const diffY = Math.abs(endY - startY);
+      
+      // Swipe từ trái sang phải (ít nhất 50px) và không quá nhiều theo chiều dọc
+      if (diffX > 50 && diffY < 100 && startX < 50) {
+        console.log('Swipe gesture detected!'); // Debug log
+        handleGoBack();
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
 
   // Component hiển thị danh sách phần thưởng
   const GiftsList = () => {
@@ -224,13 +258,13 @@ function GiftsPage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center space-x-3">
           <Button 
             variant="secondary" 
             size="small"
             onClick={handleGoBack}
-            className="text-white bg-white/20 hover:bg-white/30"
+            className="text-white bg-white/20 hover:bg-white/30 flex items-center justify-center"
           >
             <Icon icon="zi-arrow-left" />
           </Button>
@@ -277,7 +311,9 @@ function GiftsPage() {
           onTabChange={handleNavTabChange}
           onAddClick={handleAddClick}
           onZaloClick={() =>
-            window.open("https://zalo.me/2674761099009385171", "_blank")
+            openWebview({
+              url: "https://zalo.me/2674761099009385171",
+            })
           }
         />
       </div>

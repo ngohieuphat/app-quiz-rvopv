@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import useAuth from "../hook/authhook";
 import Navbar from "./Navbar";
 import { checkUserExists } from "../api/auth";
+import { followOA, showToast, openWebview } from "zmp-sdk/apis";
 
 interface QuizResultData {
   success: boolean;
@@ -41,24 +42,36 @@ function QuizResultPage() {
     const displayQuizResult = () => {
       try {
         // Get quiz data from navigation state
-        const { answers, quiz, timeSpent, apiResult } = location.state || {};
+        const { answers, quiz, timeSpent, apiResult, fromEditProfile } = location.state || {};
         
-        if (!answers || !quiz) {
-          setIsLoading(false);
-          return;
-        }
-
-        // Use API result if available, otherwise show error
-        if (apiResult && apiResult.success) {
-          setResultData(apiResult);
+        // If coming from edit profile, only need apiResult
+        if (fromEditProfile) {
+          if (apiResult && apiResult.success) {
+            setResultData(apiResult);
+          } else {
+            setResultData(null); // Show error state
+          }
+          // Don't set isLoading to false here, let it continue to load user data
         } else {
-          setResultData(null); // Show error state
+          // Normal flow from quiz
+          if (!answers || !quiz) {
+            setIsLoading(false);
+            return;
+          }
+
+          // Use API result if available, otherwise show error
+          if (apiResult && apiResult.success) {
+            setResultData(apiResult);
+          } else {
+            setResultData(null); // Show error state
+          }
         }
 
       } catch (error) {
         setIsLoading(false);
         return;
       } finally {
+        // Always set loading to false
         setIsLoading(false);
         // Refresh user data to update points
         refreshUserData();
@@ -89,8 +102,33 @@ function QuizResultPage() {
     checkUser();
   }, [user?.userId]);
 
+  const handleFollowOAThenNavigate = async (destination: string) => {
+    try {
+      await followOA({
+        id: "129295702906748400",
+      });
+      await showToast({
+        message: "Cảm ơn bạn đã theo dõi!",
+      });
+    } catch (error: any) {
+      const code = error?.code;
+      if (code === -201) {
+        // Người dùng từ chối, vẫn chuyển trang
+      } else {
+        // Có lỗi khác, vẫn chuyển trang
+      }
+    } finally {
+      // Luôn chuyển trang sau khi gọi SDK
+      navigate(destination);
+    }
+  };
+
   const handleGoHome = () => {
-    navigate("/");
+    navigate("/quiz-selection");
+  };
+
+  const handleGoToEditProfile = () => {
+    handleFollowOAThenNavigate("/edit-profile");
   };
 
   const handleNavTabChange = (tab: "quiz-selection" | "profile") => {
@@ -140,20 +178,7 @@ function QuizResultPage() {
   };
 
   const getLevelText = (level: string) => {
-    switch (level) {
-      case "excellent":
-        return "Xuất sắc";
-      case "good":
-        return "Tốt";
-      case "average":
-        return "Trung bình";
-      case "fair":
-        return "Khá";
-      case "poor":
-        return "Cần cải thiện";
-      default:
-        return "Chưa xác định";
-    }
+    return "Cảm ơn bạn đã tham gia đố vui";
   };
 
   if (isLoading) {
@@ -215,9 +240,24 @@ function QuizResultPage() {
             <Text.Title size="xLarge" className="text-purple-600 font-bold mb-2">
               {getLevelText(reward.level)}
             </Text.Title>
-            <Text size="normal" className="text-gray-600">
+            <Text size="normal" className="text-gray-600 mb-4">
               {reward.message}
             </Text>
+            
+            {/* Follow OA Button */}
+            <div className="mt-4">
+              <Button
+                variant="primary"
+                size="medium"
+                onClick={() => handleFollowOAThenNavigate("/quiz-selection")}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                <div className="flex items-center justify-center space-x-3">
+                  <Icon icon="zi-add-user" className="text-xl flex-shrink-0" />
+                  <span className="text-base font-semibold">Theo dõi OA để nhận thưởng</span>
+                </div>
+              </Button>
+            </div>
           </div>
         </Box>
 
@@ -298,20 +338,7 @@ function QuizResultPage() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          {/* Button 1: Nhập địa chỉ nhận thưởng (chỉ hiện khi address []) */}
-          {userInfo && (!userInfo.hasAddress || (userInfo.user && userInfo.user.address && userInfo.user.address.length === 0)) && (
-            <Button
-              variant="primary"
-              size="large"
-              onClick={() => navigate("/edit-profile")}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl"
-            >
-              <Icon icon="zi-star" />
-              Nhập địa chỉ nhận thưởng
-            </Button>
-          )}
-          
-          {/* Button 2: Về trang chủ (luôn hiện) */}
+          {/* Button: Về trang chủ */}
           <Button
             variant="secondary"
             size="large"
@@ -333,15 +360,17 @@ function QuizResultPage() {
           </Text>
         </div>
 
-        {/* Navbar */}
+        {/* Navbar
         <Navbar
           activeTab="quiz-selection"
           onTabChange={handleNavTabChange}
           onAddClick={handleAddClick}
           onZaloClick={() =>
-            window.open("https://zalo.me/2674761099009385171", "_blank")
+            openWebview({
+              url: "https://zalo.me/2674761099009385171",
+            })
           }
-        />
+        /> */}
       </div>
     </Page>
   );
