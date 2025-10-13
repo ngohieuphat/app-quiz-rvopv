@@ -184,9 +184,9 @@ function QuizSelectionPage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full overflow-hidden animate-pulse">
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-2 sm:px-4 pt-8 sm:pt-12 pb-2 sm:pb-3 flex items-center justify-between shadow-lg">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden animate-pulse flex-shrink-0">
             {user?.avatar ? (
               <img 
                 src={user.avatar} 
@@ -195,34 +195,34 @@ function QuizSelectionPage() {
               />
             ) : (
               <div className="w-full h-full bg-white flex items-center justify-center">
-                <Icon icon="zi-user" className="text-purple-600" />
+                <Icon icon="zi-user" className="text-purple-600 text-xs sm:text-sm" />
               </div>
             )}
           </div>
-          <div>
-            <Text size="small" className="text-white font-bold">RVOPV - KIẾN THỨC DƯỢC PHẨM</Text>
-            <Text size="xSmall" className="text-blue-100">Xin chào! {user?.name || "Dược sĩ"}</Text>
+          <div className="min-w-0 flex-1">
+            <Text size="xSmall" className="text-white font-bold text-[10px] sm:text-xs leading-tight truncate">RVOPV - KIẾN THỨC DƯỢC PHẨM</Text>
+            <Text size="xSmall" className="text-blue-100 text-[9px] sm:text-xs leading-tight truncate">Xin chào! {user?.name || "Dược sĩ"}</Text>
           </div>
         </div>
    
       </div>
 
       {/* Main Content */}
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-2 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4 pb-20 sm:pb-24">
         {/* Main Title */}
-        <Box className="bg-gradient-to-r from-white to-blue-50 rounded-2xl p-5 shadow-lg border-2 border-purple-300">
-          <div className="text-center space-y-3">
-            <div className="flex items-center justify-center space-x-2">
-              <Icon icon="zi-star" className="text-purple-600 animate-bounce" />
-              <Text.Title size="large" className="text-purple-600 font-bold">
+        <Box className="bg-gradient-to-r from-white to-blue-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-lg border-2 border-purple-300">
+          <div className="text-center space-y-2 sm:space-y-3">
+            <div className="flex items-center justify-center space-x-1.5 sm:space-x-2">
+              <Icon icon="zi-star" className="text-purple-600 animate-bounce text-sm sm:text-base" />
+              <Text.Title size="normal" className="text-purple-600 font-bold text-base sm:text-lg">
                 RVOPV QUIZ
               </Text.Title>
             </div>
-            <div className="flex items-center justify-center space-x-2">
-              <Text.Title size="large" className="text-blue-600 font-bold">
+            <div className="flex items-center justify-center space-x-1.5 sm:space-x-2">
+              <Text.Title size="normal" className="text-blue-600 font-bold text-sm sm:text-lg leading-tight">
                 KIẾN THỨC DƯỢC PHẨM
               </Text.Title>
-              <Icon icon="zi-heart" className="text-blue-600 animate-pulse" />
+              <Icon icon="zi-heart" className="text-blue-600 animate-pulse text-sm sm:text-base" />
             </div>
           </div>
         </Box>
@@ -243,10 +243,10 @@ function QuizSelectionPage() {
 
         {/* Quiz Templates */}
         {isLoading ? (
-          <Box className="bg-white rounded-3xl p-6 shadow-xl">
+          <Box className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl">
             <div className="text-center">
-              <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <Text size="normal" className="text-gray-600">Đang tải danh sách quiz...</Text>
+              <div className="animate-spin w-6 h-6 sm:w-8 sm:h-8 border-3 sm:border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-3 sm:mb-4"></div>
+              <Text size="small" className="text-gray-600 text-xs sm:text-sm">Đang tải danh sách quiz...</Text>
             </div>
           </Box>
         ) : (
@@ -257,20 +257,20 @@ function QuizSelectionPage() {
                 index % 2 === 0 
                   ? 'from-emerald-500 to-teal-600' 
                   : 'from-orange-500 to-pink-600'
-              } rounded-3xl p-6 shadow-xl relative overflow-hidden transform hover:scale-105 transition-all duration-300`}
+              } rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-xl relative overflow-hidden transform hover:scale-105 transition-all duration-300`}
             >
               {/* Decorative elements */}
-              <div className="absolute top-4 right-4 flex space-x-1">
-                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
-                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+              <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex space-x-1">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-ping"></div>
+                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-pulse"></div>
               </div>
 
-              <div className="h-36 flex flex-col justify-between">
+              <div className="min-h-[120px] sm:h-36 flex flex-col justify-between">
                 {/* Top Section: Image and Title */}
-                <div className="flex items-start space-x-4">
+                <div className="flex items-start space-x-2 sm:space-x-4">
                   {/* Quiz Image */}
                   {quiz.url && (
-                    <div className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden border-3 border-white shadow-lg">
+                    <div className="flex-shrink-0 w-20 h-20 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden border-2 sm:border-3 border-white shadow-lg">
                       <img 
                         src={quiz.url} 
                         alt={quiz.name}
@@ -280,32 +280,32 @@ function QuizSelectionPage() {
                   )}
                   
                   {/* Quiz Content */}
-                  <div className="flex-1 space-y-2">
-                    <Text.Title size="large" className={`font-bold leading-tight ${
+                  <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
+                    <Text.Title size="small" className={`font-bold leading-tight text-sm sm:text-lg ${
                       index % 2 === 0 ? 'text-green-100' : 'text-orange-100'
                     }`}>
                       {quiz.name}
                     </Text.Title>
-                    <Text.Title size="normal" className={`font-bold ${
+                    <Text size="xSmall" className={`font-bold text-xs sm:text-sm ${
                       index % 2 === 0 ? 'text-orange-300' : 'text-green-100'
                     }`}>
                       {quiz.questions.length} câu hỏi • {quiz.totalPoints} điểm
-                    </Text.Title>
+                    </Text>
                   </div>
                 </div>
                 
                 {/* Bottom Section: Button */}
-                <div className="flex justify-center pt-2">
+                <div className="flex justify-center pt-2 sm:pt-2">
                   <Button
                     variant="primary"
-                    size="medium"
+                    size="small"
                     disabled={isProcessing}
-                    className={`text-white font-bold py-2 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-200 ${
+                    className={`text-white font-bold py-1.5 px-4 sm:py-2 sm:px-6 rounded-lg sm:rounded-xl shadow-lg transform hover:scale-105 transition-all duration-200 text-xs sm:text-sm ${
                       index % 2 === 0 
                         ? 'bg-gradient-to-r from-orange-500 to-red-500' 
                         : 'bg-gradient-to-r from-green-500 to-emerald-600'
                     } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    suffixIcon={isProcessing ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div> : <Icon icon="zi-play" />}
+                    suffixIcon={isProcessing ? <div className="animate-spin w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full"></div> : <Icon icon="zi-play" className="text-xs sm:text-sm" />}
                     onClick={() => {
                       handleStartQuiz(quiz.id);
                     }}

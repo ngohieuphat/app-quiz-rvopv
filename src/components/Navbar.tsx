@@ -18,20 +18,20 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const navbarStyle = {
     position: "fixed" as const,
-    bottom: "20px",
+    bottom: "10px",
     left: "50%",
     transform: "translateX(-50%)",
     background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-    borderRadius: "30px",
+    borderRadius: "22px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-around",
-    padding: "12px 28px",
+    padding: "8px 16px",
     zIndex: 1000,
     boxShadow: "0 8px 32px rgba(139, 92, 246, 0.15), 0 4px 16px rgba(0,0,0,0.1)",
     minWidth: "260px",
     maxWidth: "300px",
-    width: "75%",
+    width: "88%",
     border: "1px solid rgba(139, 92, 246, 0.1)",
   };
 
@@ -39,11 +39,11 @@ const Navbar: React.FC<NavbarProps> = ({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "8px",
+    padding: "6px",
     cursor: "pointer",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     flex: 1,
-    borderRadius: "20px",
+    borderRadius: "18px",
     transform: isPressed ? "scale(0.9)" : isActive ? "scale(1.05)" : "scale(1)",
     position: "relative" as const,
     backgroundColor: isActive ? "rgba(139, 92, 246, 0.1)" : "transparent",
@@ -53,7 +53,7 @@ const Navbar: React.FC<NavbarProps> = ({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "10px",
+    padding: "8px",
     cursor: "pointer",
     transition: "all 0.2s ease",
     backgroundColor: "#8B5CF6",
@@ -64,7 +64,7 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   const iconStyle = (isActive: boolean) => ({
-    fontSize: "22px",
+    fontSize: "20px",
     color: isActive ? "#8B5CF6" : "#9CA3AF",
     transition: "all 0.2s ease",
     transform: isActive ? "scale(1.1)" : "scale(1)",
@@ -112,8 +112,8 @@ const Navbar: React.FC<NavbarProps> = ({
       >
         <div style={{ position: "relative" }}>
           <svg
-            width="22"
-            height="22"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill={activeTab === "quiz-selection" ? "#8B5CF6" : "#CBD5E1"}
             style={{ transition: "all 0.2s ease" }}
@@ -127,8 +127,8 @@ const Navbar: React.FC<NavbarProps> = ({
       {/* Zalo Button */}
       <button style={zaloButtonStyle} onClick={handleZaloClick}>
         <svg
-          width="20"
-          height="20"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="white"
           style={{ transition: "all 0.2s ease" }}
@@ -143,8 +143,8 @@ const Navbar: React.FC<NavbarProps> = ({
         onClick={() => handleTabClick("profile")}
       >
         <svg
-          width="22"
-          height="22"
+          width="20"
+          height="20"
           viewBox="0 0 24 24"
           fill={activeTab === "profile" ? "#8B5CF6" : "#CBD5E1"}
           style={{ transition: "all 0.2s ease" }}
