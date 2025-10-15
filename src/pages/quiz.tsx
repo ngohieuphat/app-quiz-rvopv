@@ -108,7 +108,6 @@ function QuizPage() {
           setQuiz(null);
         }
       } catch (error) {
-        console.error("Error fetching quiz:", error);
         setQuiz(null);
       } finally {
         setIsLoading(false);
@@ -381,8 +380,7 @@ function QuizPage() {
         if (apiResult && (apiResult as any).success && (apiResult as any).data) {
           try {
             const giftData = {
-              point: (apiResult as any).data.submission.score,
-              message: (apiResult as any).data.reward.message
+              description: (apiResult as any).data.reward.rewardValue?.description || (apiResult as any).data.reward.message
             };
             
             await createUserGift(user.userId, giftData);
@@ -393,6 +391,7 @@ function QuizPage() {
           // Check if user has address after successful submission
           try {
             const userCheckResult = await checkUserExists(user.userId);
+            
             if (userCheckResult && userCheckResult.success && userCheckResult.data) {
               const hasAddress = userCheckResult.data.hasAddress && 
                                userCheckResult.data.user && 
@@ -570,7 +569,7 @@ function QuizPage() {
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between shadow-lg" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 to-blue-600 px-4 pt-12 pb-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center space-x-2">
           {/* <Button 
             variant="secondary" 

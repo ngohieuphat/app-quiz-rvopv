@@ -10,21 +10,25 @@ interface QuizResultData {
   data: {
     submission: {
       id: number;
-      score: number;
+      scorePercentage: number;
       totalQuestions: number;
       correctAnswers: number;
       timeSpent: number;
       completedAt: string;
     };
     reward: {
-      points: number;
       level: string;
       message: string;
+      rewardType?: string;
+      rewardValue?: {
+        type: string;
+        amount: string;
+        description: string;
+        voucherCode?: string;
+      };
     };
     userStats: {
-      totalPoints: number;
       totalQuizzesCompleted: number;
-      averageScore: string;
     };
   };
 }
@@ -252,9 +256,9 @@ function QuizResultPage() {
                 onClick={() => handleFollowOAThenNavigate("/quiz-selection")}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                <div className="flex items-center justify-center space-x-3">
-                  <Icon icon="zi-add-user" className="text-xl flex-shrink-0" />
-                  <span className="text-base font-semibold">Theo dõi OA để nhận thưởng</span>
+                <div className="flex items-center justify-center space-x-2 leading-none">
+                  <Icon icon="zi-add-user" className="text-lg flex-shrink-0 leading-none" />
+                  <span className="text-sm font-semibold leading-none">Theo dõi OA để nhận thưởng</span>
                 </div>
               </Button>
             </div>
@@ -284,21 +288,27 @@ function QuizResultPage() {
           </div>
         </Box>
 
-        {/* Points Earned */}
-        <Box className="bg-gradient-to-r from-yellow-500 to-orange-600 rounded-2xl p-4 shadow-lg">
-          <div className="text-center space-y-2">
-            <Icon icon="zi-star" className="text-white text-2xl mx-auto" />
-            <Text size="small" className="text-white font-bold">
-              +{reward.points}
-            </Text>
-            <Text size="xSmall" className="text-yellow-100">
-              Điểm thưởng
-            </Text>
-            <Text size="xSmall" className="text-yellow-100 font-medium">
-              {reward.message}
-            </Text>
-          </div>
-        </Box>
+        {/* Reward Earned */}
+        {reward.rewardValue && (
+          <Box className="bg-gradient-to-r from-yellow-500 to-orange-600 rounded-2xl p-4 shadow-lg">
+            <div className="text-center space-y-2">
+              <Icon icon="zi-star" className="text-white text-2xl mx-auto" />
+              <Text size="normal" className="text-white font-bold">
+                {reward.rewardValue.description}
+              </Text>
+              {reward.rewardValue.voucherCode && (
+                <div className="bg-white/20 rounded-lg px-3 py-2 mt-2">
+                  <Text size="xSmall" className="text-yellow-100 font-medium">
+                    Mã voucher: {reward.rewardValue.voucherCode}
+                  </Text>
+                </div>
+              )}
+              <Text size="xSmall" className="text-yellow-100 font-medium">
+                {reward.message}
+              </Text>
+            </div>
+          </Box>
+        )}
 
         {/* User Stats */}
         <Box className="bg-white rounded-3xl p-6 shadow-xl">
@@ -307,19 +317,6 @@ function QuizResultPage() {
           </Text.Title>
           
           <div className="space-y-4">
-            {/* Total Points */}
-            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
-              <div className="flex items-center space-x-3">
-                <Icon icon="zi-star" className="text-purple-600" />
-                <Text size="normal" className="font-medium text-gray-700">
-                  Tổng điểm
-                </Text>
-              </div>
-              <Text size="normal" className="font-bold text-purple-600">
-                {userStats.totalPoints}
-              </Text>
-            </div>
-
             {/* Quizzes Completed */}
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
               <div className="flex items-center space-x-3">
@@ -332,7 +329,6 @@ function QuizResultPage() {
                 {userStats.totalQuizzesCompleted}
               </Text>
             </div>
-
           </div>
         </Box>
 

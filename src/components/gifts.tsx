@@ -110,49 +110,47 @@ function GiftsPage() {
       );
     }
 
-    // Tính tổng điểm
-    const totalPoints = user.giftName.reduce((total, gift) => total + gift.point, 0);
-    const usedPoints = user.giftName
-      .filter(gift => gift.isUsed)
-      .reduce((total, gift) => total + gift.point, 0);
-    const availablePoints = totalPoints - usedPoints;
+    // Tính tổng số phần thưởng
+    const totalGifts = user.giftName.length;
+    const usedGifts = user.giftName.filter(gift => gift.isUsed).length;
+    const availableGifts = totalGifts - usedGifts;
 
     return (
       <div className="space-y-4">
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-3">
-          {/* Total Points */}
+          {/* Total Gifts */}
           <Box className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-star" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
-                {totalPoints}
+                {totalGifts}
               </Text>
               <Text size="xSmall" className="text-blue-100">
-                Tổng điểm
+                Tổng phần thưởng
               </Text>
             </div>
           </Box>
 
-          {/* Available Points */}
+          {/* Available Gifts */}
           <Box className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
-                {availablePoints}
+                {availableGifts}
               </Text>
               <Text size="xSmall" className="text-green-100">
-                Có thể dùng
+                Chưa dùng
               </Text>
             </div>
           </Box>
 
-          {/* Used Points */}
+          {/* Used Gifts */}
           <Box className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check-circle" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
-                {usedPoints}
+                {usedGifts}
               </Text>
               <Text size="xSmall" className="text-gray-100">
                 Đã sử dụng
@@ -194,12 +192,9 @@ function GiftsPage() {
                             className={`text-lg ${gift.isUsed ? 'text-gray-500' : 'text-green-600'}`}
                           />
                         </div>
-                        <div>
-                          <Text size="normal" className={`font-bold ${gift.isUsed ? 'text-gray-500' : 'text-green-600'}`}>
-                            +{gift.point} điểm
-                          </Text>
+                        <div className="flex-1">
                           {gift.isUsed && (
-                            <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full ml-2">
+                            <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full">
                               Đã sử dụng
                             </span>
                           )}
@@ -207,7 +202,7 @@ function GiftsPage() {
                       </div>
                       
                       <Text size="normal" className={`${gift.isUsed ? 'text-gray-500' : 'text-gray-700'} mb-2`}>
-                        {gift.message}
+                        {gift.description}
                       </Text>
                       
                       <div className="flex items-center justify-between">

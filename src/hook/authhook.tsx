@@ -26,10 +26,9 @@ import { getUserById, checkUserExists } from "../api/auth";
   
   interface Gift {
     id: number;
-    point: number;
     isUsed: boolean;
-    message: string;
     createdAt: string;
+    description: string;
   }
 
   interface QuizAttempt {

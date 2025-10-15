@@ -5,7 +5,7 @@ const BASE_URL = "https://loyalty.bom.asia";
 // Lấy danh sách quiz templates
 export const getQuizTemplates = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/api/miniApp/quiz/templates/`);
+    const response = await axios.get(`${BASE_URL}/api/miniApp/quiz/templates/active`);
     return response.data;
   } catch (error) {
     throw error;
