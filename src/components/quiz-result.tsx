@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import useAuth from "../hook/authhook";
 import Navbar from "./Navbar";
 import { checkUserExists } from "../api/auth";
+import { completeFollowOAStep } from "../api/apiStep";
 import { followOA, showToast, openWebview } from "zmp-sdk/apis";
 
 interface QuizResultData {
@@ -111,6 +112,24 @@ function QuizResultPage() {
       await followOA({
         id: "129295702906748400",
       });
+      
+      // Complete follow OA step after successful follow
+      if (user?.userId) {
+        try {
+          console.log('👥 Completing follow OA step...');
+          const followOAData = {
+            followedOA: true
+          };
+          console.log('Follow OA step data:', followOAData);
+          
+          const followOAStepResult = await completeFollowOAStep(user.userId, followOAData);
+          console.log('✅ Follow OA step completed successfully:', followOAStepResult);
+        } catch (followOAStepError) {
+          console.error('❌ Error completing follow OA step:', followOAStepError);
+          // Don't block the flow if follow OA step completion fails
+        }
+      }
+      
       await showToast({
         message: "Cảm ơn bạn đã theo dõi!",
       });

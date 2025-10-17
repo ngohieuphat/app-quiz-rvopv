@@ -2,6 +2,7 @@ import { Button, Icon, Page, Text, Box, useNavigate, useLocation, Input } from "
 import useAuth from "../hook/authhook";
 import { useState, useEffect } from "react";
 import { getDynamicFormConfig, getUserFormData, submitDynamicForm, getVietnameseProvinces } from "../api/auth";
+import { completePharmacyStep } from "../api/apiStep";
 import Navbar from "./Navbar";
 import { showToast, openWebview } from "zmp-sdk/apis";
 
@@ -245,6 +246,18 @@ function EditProfilePage() {
     try {
       const result = await submitDynamicForm(user.userId, formattedData);
       
+      // Complete pharmacy step after successful form submission
+      try {
+        console.log('🏥 Completing pharmacy step...');
+        console.log('Formatted data for pharmacy step:', formattedData);
+        
+        const pharmacyStepResult = await completePharmacyStep(user.userId, formattedData);
+        console.log('✅ Pharmacy step completed successfully:', pharmacyStepResult);
+      } catch (pharmacyStepError) {
+        console.error('❌ Error completing pharmacy step:', pharmacyStepError);
+        // Don't block the flow if pharmacy step completion fails
+      }
+      
       // Tự động cập nhật dữ liệu user sau khi lưu thành công
       await refreshUserData();
       
@@ -265,7 +278,7 @@ function EditProfilePage() {
               fromEditProfile: true
             } 
           });
-        }, 1500); // Wait 1.5 seconds
+        }, 3000); // Wait 3 seconds
       } else {
         // Normal flow, go to profile
         await showToast({

@@ -2,6 +2,7 @@ import { Button, Icon, Page, Text, Box, useNavigate, useLocation } from "zmp-ui"
 import { useState, useEffect, useRef } from "react";
 import { getQuizTemplateById, submitQuizSubmission } from "../api/quiz";
 import { createUserGift, checkUserExists } from "../api/auth";
+import { completeQuizStep } from "../api/apiStep";
 import useAuth from "../hook/authhook";
 import Swal from 'sweetalert2';
 
@@ -375,6 +376,25 @@ function QuizPage() {
 
         // Submit to API and get result
         apiResult = await submitQuizSubmission(submissionData);
+        
+        // Complete quiz step if submission is successful
+        if (apiResult && (apiResult as any).success && (apiResult as any).data) {
+          try {
+            console.log('🎯 Completing quiz step...');
+            const quizStepData = {
+              quizId: quiz.id.toString(),
+              score: (apiResult as any).data.submission.scorePercentage || 0,
+              timeSpent: totalTimeSpent
+            };
+            console.log('Quiz step data:', quizStepData);
+            
+            const stepResult = await completeQuizStep(user.userId, quizStepData);
+            console.log('✅ Quiz step completed successfully:', stepResult);
+          } catch (stepError) {
+            console.error('❌ Error completing quiz step:', stepError);
+            // Don't block the flow if step completion fails
+          }
+        }
         
         // Create user gift if submission is successful
         if (apiResult && (apiResult as any).success && (apiResult as any).data) {
