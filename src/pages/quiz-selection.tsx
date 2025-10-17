@@ -1,7 +1,7 @@
 import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { getQuizTemplates } from "../api/quiz";
-import { createUser, checkAttempt } from "../api/auth";
+import { createUser, checkAttempt, checkUserExists } from "../api/auth";
 import { useState, useEffect } from "react";
 import useZaloUserData from "../hook/useZaloUserData";
 import Navbar from "../components/Navbar";
@@ -24,14 +24,10 @@ interface QuizTemplate {
   id: number;
   name: string;
   url: string;
-  totalPoints: number;
-  rewards: {
-    fair: QuizReward;
-    good: QuizReward;
-    poor: QuizReward;
-    average: QuizReward;
-    excellent: QuizReward;
-  };
+  totalQuestions: number;
+  displayQuestions: number;
+  actualQuestions: number;
+  rewards: any[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -125,8 +121,41 @@ function QuizSelectionPage() {
           // Xử lý kết quả check attempt
           if (attemptResult && attemptResult.success && attemptResult.data) {
             if (attemptResult.data.hasAttempted) {
-              // User đã làm quiz này rồi - hiển thị thông báo
-              alert("Bạn đã làm quiz này rồi!");
+              // User đã làm quiz này rồi - kiểm tra address
+              try {
+                const userCheckResult = await checkUserExists(user.userId);
+                
+                if (userCheckResult && userCheckResult.success && userCheckResult.data) {
+                  const hasAddress = userCheckResult.data.hasAddress && 
+                                   userCheckResult.data.user && 
+                                   userCheckResult.data.user.address && 
+                                   userCheckResult.data.user.address.length > 0;
+                  
+                  if (!hasAddress) {
+                    // User chưa cập nhật thông tin nhận thưởng
+                    alert("Bạn đã làm quiz này rồi! Bạn chưa cập nhật thông tin nhận thưởng. Vui lòng cập nhật thông tin để nhận phần thưởng.");
+                    
+                    // Navigate to edit profile
+                    navigate("/edit-profile", {
+                      state: {
+                        fromQuizSelection: true,
+                        quizId: quizId,
+                        message: "Cập nhật thông tin để nhận phần thưởng từ quiz đã hoàn thành"
+                      }
+                    });
+                  } else {
+                    // User đã có address - chỉ thông báo đã làm quiz
+                    alert("Bạn đã làm quiz này rồi!");
+                  }
+                } else {
+                  // Không kiểm tra được user info - chỉ thông báo đã làm quiz
+                  alert("Bạn đã làm quiz này rồi!");
+                }
+              } catch (addressError) {
+                // Lỗi khi kiểm tra address - chỉ thông báo đã làm quiz
+                alert("Bạn đã làm quiz này rồi!");
+              }
+              
               setIsProcessing(false);
               setShouldFetch(false);
               return; // Dừng lại, không tiếp tục
@@ -290,7 +319,7 @@ function QuizSelectionPage() {
                     <Text size="xSmall" className={`font-bold text-xs sm:text-sm ${
                       index % 2 === 0 ? 'text-orange-300' : 'text-green-100'
                     }`}>
-                      {quiz.questions.length} câu hỏi • {quiz.totalPoints} điểm
+                      {quiz.actualQuestions || quiz.displayQuestions || quiz.totalQuestions || 0} câu hỏi • 100 điểm
                     </Text>
                   </div>
                 </div>

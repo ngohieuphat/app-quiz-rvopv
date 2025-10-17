@@ -261,11 +261,11 @@ function EditProfilePage() {
       // Tự động cập nhật dữ liệu user sau khi lưu thành công
       await refreshUserData();
       
-      // Check if coming from quiz
-      const { fromQuiz, quizResult, quizId } = location.state || {};
+      // Check if coming from quiz or quiz selection
+      const { fromQuiz, fromQuizSelection, quizResult, quizId, message } = location.state || {};
       
       if (fromQuiz && quizResult && quizId) {
-        // Coming from quiz, show thank you message and go to quiz result
+        // Coming from quiz flow, show thank you message and go to quiz result
         await showToast({
           message: "Cảm ơn bạn đã điền thông tin!",
         });
@@ -279,6 +279,16 @@ function EditProfilePage() {
             } 
           });
         }, 3000); // Wait 3 seconds
+      } else if (fromQuizSelection && quizId) {
+        // Coming from quiz selection (user already completed quiz but no address)
+        await showToast({
+          message: "Cảm ơn bạn đã cập nhật thông tin! Bây giờ bạn có thể nhận phần thưởng.",
+        });
+        
+        // Wait a bit for toast to display and go back to quiz selection
+        setTimeout(() => {
+          navigate("/quiz-selection");
+        }, 2000); // Wait 2 seconds
       } else {
         // Normal flow, go to profile
         await showToast({
@@ -296,12 +306,54 @@ function EditProfilePage() {
     }
   };
 
-  const handleCancel = () => {
-    navigate("/profile");
+  const handleCancel = async () => {
+    // Check if coming from quiz flow
+    const { fromQuiz, quizResult, quizId } = location.state || {};
+    
+    if (fromQuiz && quizResult && quizId) {
+      // Coming from quiz flow, show different message and go to quiz result
+      await showToast({
+        message: "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!",
+      });
+      
+      // Wait a bit for toast to display and go to quiz result
+      setTimeout(() => {
+        navigate(`/quiz-result/${quizId}`, { 
+          state: { 
+            apiResult: quizResult,
+            fromEditProfile: true
+          } 
+        });
+      }, 2000); // Wait 2 seconds
+    } else {
+      // Normal flow, go to profile
+      navigate("/profile");
+    }
   };
 
-  const handleGoBack = () => {
-    navigate("/profile");
+  const handleGoBack = async () => {
+    // Check if coming from quiz flow
+    const { fromQuiz, quizResult, quizId } = location.state || {};
+    
+    if (fromQuiz && quizResult && quizId) {
+      // Coming from quiz flow, show different message and go to quiz result
+      await showToast({
+        message: "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!",
+      });
+      
+      // Wait a bit for toast to display and go to quiz result
+      setTimeout(() => {
+        navigate(`/quiz-result/${quizId}`, { 
+          state: { 
+            apiResult: quizResult,
+            fromEditProfile: true
+          } 
+        });
+      }, 2000); // Wait 2 seconds
+    } else {
+      // Normal flow, go to profile
+      navigate("/profile");
+    }
   };
 
   // Get validation error message for a specific field
@@ -561,7 +613,13 @@ function EditProfilePage() {
                 Thông tin nhà thuốc
               </Text.Title>
               <Text size="small" className="text-gray-600">
-                {hasExistingData ? "Cập nhật thông tin nhà thuốc của bạn" : "Điền thông tin nhà thuốc của bạn"}
+                {(() => {
+                  const { fromQuizSelection, message } = location.state || {};
+                  if (fromQuizSelection && message) {
+                    return message; // Hiển thị message từ quiz-selection
+                  }
+                  return hasExistingData ? "Cập nhật thông tin nhà thuốc của bạn" : "Điền thông tin nhà thuốc của bạn";
+                })()}
               </Text>
             </div>
 

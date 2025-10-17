@@ -169,12 +169,16 @@ function QuizResultPage() {
   const getLevelColor = (level: string) => {
     switch (level) {
       case "excellent":
+      case "Xuất sắc":
         return "from-green-500 to-emerald-600";
       case "good":
+      case "Khá tốt":
         return "from-blue-500 to-cyan-600";
       case "average":
+      case "Cố gắng":
         return "from-yellow-500 to-orange-600";
       case "fair":
+      case "Chưa đạt":
         return "from-orange-500 to-red-500";
       case "poor":
         return "from-red-500 to-pink-600";
@@ -186,12 +190,16 @@ function QuizResultPage() {
   const getLevelIcon = (level: string) => {
     switch (level) {
       case "excellent":
+      case "Xuất sắc":
         return "zi-star";
       case "good":
+      case "Khá tốt":
         return "zi-check";
       case "average":
+      case "Cố gắng":
         return "zi-info-circle";
       case "fair":
+      case "Chưa đạt":
         return "zi-warning";
       case "poor":
         return "zi-close";

@@ -31,18 +31,35 @@ interface QuizQuestion {
   answers: QuizAnswer[];
 }
 
+interface RewardItem {
+  id: number;
+  level: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  message: string;
+  rewardType: string;
+  rewardValue: {
+    type: string;
+    amount?: string;
+    description: string;
+    voucherCode?: string;
+    points?: number;
+    icon?: string;
+    badgeName?: string;
+  };
+  isActive: boolean;
+  sortOrder: number;
+}
+
 interface QuizTemplate {
   id: number;
   name: string;
   url: string;
   totalPoints: number;
-  rewards: {
-    fair: { level: string; points: number; message: string; minScore: number };
-    good: { level: string; points: number; message: string; minScore: number };
-    poor: { level: string; points: number; message: string; minScore: number };
-    average: { level: string; points: number; message: string; minScore: number };
-    excellent: { level: string; points: number; message: string; minScore: number };
-  };
+  totalQuestions: number;
+  displayQuestions: number;
+  actualQuestions: number;
+  rewards: RewardItem[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -216,7 +233,7 @@ function QuizPage() {
       
       
       // Move to next question or finish quiz
-      if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
+      if (currentQuestionIndex < (quiz?.actualQuestions || quiz?.displayQuestions || quiz?.questions.length || 0) - 1) {
         const nextQuestionIndex = currentQuestionIndex + 1;
         setCurrentQuestionIndex(nextQuestionIndex);
         // Answer restoration will be handled by useEffect
@@ -273,7 +290,7 @@ function QuizPage() {
         [currentQuestionIndex]: answerToSave
       };
       
-      if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
+      if (currentQuestionIndex < (quiz?.actualQuestions || quiz?.displayQuestions || quiz?.questions.length || 0) - 1) {
         const nextQuestionIndex = currentQuestionIndex + 1;
         
         // Just change question index, useEffect will handle answer restoration
@@ -468,7 +485,7 @@ function QuizPage() {
             submission: {
               id: Date.now(),
               score: 100,
-              totalQuestions: quiz?.questions.length || 5,
+              totalQuestions: quiz?.actualQuestions || quiz?.displayQuestions || quiz?.questions.length || 5,
               correctAnswers: Object.values(finalAnswers || answers).filter((answer: any) => answer !== null && answer >= 0).length,
               timeSpent: fallbackTimeSpent,
               completedAt: new Date().toISOString()
@@ -584,7 +601,7 @@ function QuizPage() {
     );
   }
   
-  const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
+  const progress = ((currentQuestionIndex + 1) / (quiz.actualQuestions || quiz.displayQuestions || quiz.questions.length)) * 100;
 
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
@@ -602,7 +619,7 @@ function QuizPage() {
           <div>
             <Text size="small" className="text-white font-bold">RVOPV QUIZ</Text>
             <Text size="xSmall" className="text-blue-100">
-              Câu {currentQuestionIndex + 1}/{quiz.questions.length}
+              Câu {currentQuestionIndex + 1}/{quiz.actualQuestions || quiz.displayQuestions || quiz.questions.length}
             </Text>
           </div>
         </div>
@@ -641,7 +658,7 @@ function QuizPage() {
               <div className="flex items-baseline space-x-1">
                 <Icon icon="zi-chat" className="text-blue-500 text-sm flex-shrink-0" style={{ marginTop: '1px' }} />
                 <Text size="xSmall" className="text-gray-600">
-                  {quiz.questions.length} câu hỏi
+                  {quiz.actualQuestions || quiz.displayQuestions || quiz.questions.length} câu hỏi
                 </Text>
               </div>
               <div className="flex items-baseline space-x-1">
@@ -826,7 +843,7 @@ function QuizPage() {
              }
              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
            >
-            {currentQuestionIndex === quiz.questions.length - 1 ? (
+            {currentQuestionIndex === (quiz.actualQuestions || quiz.displayQuestions || quiz.questions.length) - 1 ? (
               <>
                 <Icon icon="zi-check" />
                 Hoàn thành
