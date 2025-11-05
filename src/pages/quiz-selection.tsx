@@ -2,7 +2,7 @@ import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { getQuizTemplates, getQuizSubmissionResult } from "../api/quiz";
 import { createUser, checkAttempt, checkUserExists } from "../api/auth";
-import { showWarningAlert, showInfoAlert, showErrorAlert } from "../api/apiAlert";
+import { showWarningAlert, showInfoAlert, showErrorAlert, getCachedAlertMessages } from "../api/apiAlert";
 import { useState, useEffect } from "react";
 import useZaloUserData from "../hook/useZaloUserData";
 import Navbar from "../components/Navbar";
@@ -46,6 +46,7 @@ function QuizSelectionPage() {
   const [showQuizResultModal, setShowQuizResultModal] = useState(false);
   const [selectedQuizIdForResult, setSelectedQuizIdForResult] = useState<number | null>(null);
   const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [quizAlreadyCompletedMessage, setQuizAlreadyCompletedMessage] = useState<string>("Bạn đã làm quiz này rồi!");
   useEffect(() => {
     const fetchQuizTemplates = async () => {
       try {
@@ -61,7 +62,19 @@ function QuizSelectionPage() {
       }
     };
 
+    const fetchAlertMessages = async () => {
+      try {
+        const messages = await getCachedAlertMessages();
+        if (messages && messages.warning && messages.warning.quizAlreadyCompleted) {
+          setQuizAlreadyCompletedMessage(messages.warning.quizAlreadyCompleted);
+        }
+      } catch (error) {
+        // Keep default message if API fails
+      }
+    };
+
     fetchQuizTemplates();
+    fetchAlertMessages();
   }, []);
   // useEffect để xử lý khi state đã update
   useEffect(() => {
@@ -409,7 +422,7 @@ function QuizSelectionPage() {
                 <Icon icon="zi-star" className="text-yellow-500 text-4xl" />
               </div>
               <Text.Title size="normal" className="text-gray-800 font-bold">
-                Bạn đã làm quiz này rồi!
+                {quizAlreadyCompletedMessage}
               </Text.Title>
               <Text size="normal" className="text-gray-600">
                 Bạn muốn xem lại kết quả quiz không?
