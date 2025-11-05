@@ -4,7 +4,16 @@ import useAuth from "../hook/authhook";
 import Navbar from "./Navbar";
 import { checkUserExists } from "../api/auth";
 import { completeFollowOAStep } from "../api/apiStep";
+import { showAlertToast } from "../api/apiAlert";
 import { followOA, showToast, openWebview } from "zmp-sdk/apis";
+
+interface RewardValue {
+  description: string;
+  type?: string;
+  gift?: number;
+  topup?: number;
+  [key: string]: any; // Cho phép các trường khác trong tương lai
+}
 
 interface QuizResultData {
   success: boolean;
@@ -17,20 +26,20 @@ interface QuizResultData {
       timeSpent: number;
       completedAt: string;
     };
-    reward: {
-      level: string;
-      message: string;
+    reward?: {
+      message?: string;
       rewardType?: string;
-      rewardValue?: {
-        type: string;
-        amount: string;
-        description: string;
-        voucherCode?: string;
-      };
+      rewardValue?: RewardValue;
     };
-    userStats: {
+    userStats?: {
       totalQuizzesCompleted: number;
     };
+    quiz?: {
+      id: number;
+      name: string;
+      displayQuestions?: number;
+    };
+    user?: any;
   };
 }
 
@@ -47,10 +56,10 @@ function QuizResultPage() {
     const displayQuizResult = () => {
       try {
         // Get quiz data from navigation state
-        const { answers, quiz, timeSpent, apiResult, fromEditProfile } = location.state || {};
+        const { answers, quiz, timeSpent, apiResult, fromEditProfile, fromQuizSelection } = location.state || {};
         
-        // If coming from edit profile, only need apiResult
-        if (fromEditProfile) {
+        // If coming from edit profile or quiz selection, only need apiResult
+        if (fromEditProfile || fromQuizSelection) {
           if (apiResult && apiResult.success) {
             setResultData(apiResult);
           } else {
@@ -116,23 +125,17 @@ function QuizResultPage() {
       // Complete follow OA step after successful follow
       if (user?.userId) {
         try {
-          console.log('👥 Completing follow OA step...');
           const followOAData = {
             followedOA: true
           };
-          console.log('Follow OA step data:', followOAData);
           
           const followOAStepResult = await completeFollowOAStep(user.userId, followOAData);
-          console.log('✅ Follow OA step completed successfully:', followOAStepResult);
         } catch (followOAStepError) {
-          console.error('❌ Error completing follow OA step:', followOAStepError);
           // Don't block the flow if follow OA step completion fails
         }
       }
       
-      await showToast({
-        message: "Cảm ơn bạn đã theo dõi!",
-      });
+      await showAlertToast("success", "thankYou", "Cảm ơn bạn đã theo dõi!");
     } catch (error: any) {
       const code = error?.code;
       if (code === -201) {
@@ -166,51 +169,6 @@ function QuizResultPage() {
     // TODO: Handle add click
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "excellent":
-      case "Xuất sắc":
-        return "from-green-500 to-emerald-600";
-      case "good":
-      case "Khá tốt":
-        return "from-blue-500 to-cyan-600";
-      case "average":
-      case "Cố gắng":
-        return "from-yellow-500 to-orange-600";
-      case "fair":
-      case "Chưa đạt":
-        return "from-orange-500 to-red-500";
-      case "poor":
-        return "from-red-500 to-pink-600";
-      default:
-        return "from-gray-500 to-gray-600";
-    }
-  };
-
-  const getLevelIcon = (level: string) => {
-    switch (level) {
-      case "excellent":
-      case "Xuất sắc":
-        return "zi-star";
-      case "good":
-      case "Khá tốt":
-        return "zi-check";
-      case "average":
-      case "Cố gắng":
-        return "zi-info-circle";
-      case "fair":
-      case "Chưa đạt":
-        return "zi-warning";
-      case "poor":
-        return "zi-close";
-      default:
-        return "zi-star";
-    }
-  };
-
-  const getLevelText = (level: string) => {
-    return "Cảm ơn bạn đã tham gia đố vui";
-  };
 
   if (isLoading) {
     return (
@@ -246,7 +204,16 @@ function QuizResultPage() {
   }
 
   const { submission, reward, userStats } = resultData.data;
-  const scorePercentage = Math.round((submission.correctAnswers / submission.totalQuestions) * 100);
+  
+  // Fallback userStats nếu không có trong response
+  const safeUserStats = userStats || { totalQuizzesCompleted: 0 };
+  
+  // Ensure reward exists with safe defaults
+  // const safeReward = reward || {
+  //   message: "Cảm ơn bạn đã tham gia đố vui!",
+  // };
+  
+
 
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
@@ -265,16 +232,14 @@ function QuizResultPage() {
         {/* Result Header */}
         <Box className="bg-white rounded-3xl p-6 shadow-xl text-center">
           <div className="mb-4">
-            <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-r ${getLevelColor(reward.level)} flex items-center justify-center mb-4`}>
-              <Icon icon={getLevelIcon(reward.level)} className="text-white text-3xl" />
-            </div>
-            <Text.Title size="xLarge" className="text-purple-600 font-bold mb-2">
-              {getLevelText(reward.level)}
+            <Text.Title size="xLarge" className="text-purple-600 font-bold mb-4">
+              Chúc mừng bạn đã hoàn thành {submission.totalQuestions} câu đố
             </Text.Title>
             <Text size="normal" className="text-gray-600 mb-4">
-              {reward.message}
+             Chúc mừng bạn đã nhận được quà tặng {reward?.message}
             </Text>
-            
+            <Text size="normal" className="text-gray-600 mb-4">Chỉ còn 1 bước nữa thôi để nhận quà nhé {user?.name} ơi!!!!
+            </Text>
             {/* Follow OA Button */}
             <div className="mt-4">
               <Button
@@ -284,55 +249,47 @@ function QuizResultPage() {
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 <div className="flex items-center justify-center space-x-2 leading-none">
-                  <Icon icon="zi-add-user" className="text-lg flex-shrink-0 leading-none" />
-                  <span className="text-sm font-semibold leading-none">Theo dõi OA để nhận thưởng</span>
+                  
+                  <Icon icon="zi-star" className="text-lg flex-shrink-0 leading-none" />
+                  <span className="text-sm font-semibold leading-none">Quan tâm OA để nhận quà ngay!</span>
                 </div>
               </Button>
             </div>
           </div>
         </Box>
 
-        {/* Score Display */}
-        <Box className="bg-white rounded-3xl p-6 shadow-xl">
-          <div className="text-center mb-6">
-            <Text.Title size="large" className="text-gray-800 font-bold mb-2">
-              Điểm số của bạn
-            </Text.Title>
-            <div className="text-6xl font-bold text-purple-600 mb-2">
-              {scorePercentage}%
-            </div>
-            <Text size="normal" className="text-gray-600">
-              {submission.correctAnswers}/{submission.totalQuestions} câu đúng
-            </Text>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-            <div 
-              className="bg-gradient-to-r from-purple-500 to-blue-500 h-4 rounded-full transition-all duration-1000"
-              style={{ width: `${scorePercentage}%` }}
-            ></div>
-          </div>
-        </Box>
-
-        {/* Reward Earned */}
-        {reward.rewardValue && (
+        {/* Reward Earned - Show if rewardValue exists OR if we have message/description */}
+        {(reward?.rewardValue || reward?.message) && (
           <Box className="bg-gradient-to-r from-yellow-500 to-orange-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-star" className="text-white text-2xl mx-auto" />
-              <Text size="normal" className="text-white font-bold">
-                {reward.rewardValue.description}
-              </Text>
-              {reward.rewardValue.voucherCode && (
-                <div className="bg-white/20 rounded-lg px-3 py-2 mt-2">
-                  <Text size="xSmall" className="text-yellow-100 font-medium">
-                    Mã voucher: {reward.rewardValue.voucherCode}
-                  </Text>
-                </div>
+              {reward?.rewardValue?.type && (
+                <Text size="small" className="text-yellow-100 font-medium mb-1">
+                  {reward.rewardValue.type}
+                </Text>
               )}
-              <Text size="xSmall" className="text-yellow-100 font-medium">
-                {reward.message}
-              </Text>
+              {/* Show description from rewardValue if available */}
+              {reward?.rewardValue?.description && (
+                <Text size="normal" className="text-white font-bold">
+                  {reward.rewardValue.description}
+                </Text>
+              )}
+              {/* Show message if no description */}
+              {!reward?.rewardValue?.description && reward?.message && (
+                <Text size="normal" className="text-white font-bold">
+                  {reward.message}
+                </Text>
+              )}
+              {reward?.rewardValue?.gift && (
+                <Text size="small" className="text-yellow-100 font-medium mt-2">
+                  Giá trị: {reward.rewardValue.gift.toLocaleString('vi-VN')} đ
+                </Text>
+              )}
+              {reward?.rewardValue?.topup && (
+                <Text size="small" className="text-yellow-100 font-medium mt-2">
+                  Nạp tiền: {reward.rewardValue.topup.toLocaleString('vi-VN')} đ
+                </Text>
+              )}
             </div>
           </Box>
         )}
@@ -353,7 +310,7 @@ function QuizResultPage() {
                 </Text>
               </div>
               <Text size="normal" className="font-bold text-blue-600">
-                {userStats.totalQuizzesCompleted}
+                {safeUserStats.totalQuizzesCompleted}
               </Text>
             </div>
           </div>

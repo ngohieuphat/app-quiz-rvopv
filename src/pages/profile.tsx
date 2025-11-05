@@ -130,7 +130,7 @@ function ProfilePage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-4">
           {/* Quiz Completed */}
-          <Box className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check-circle" className="text-white text-2xl mx-auto" />
               <Text size="small" className="text-white font-bold">
@@ -140,20 +140,9 @@ function ProfilePage() {
                 Quiz đã hoàn thành
               </Text>
             </div>
-          </Box>
+          </Box> */}
 
-          {/* Average Score */}
-          <Box className="bg-gradient-to-r from-orange-500 to-pink-600 rounded-2xl p-4 shadow-lg">
-            <div className="text-center space-y-2">
-              <Icon icon="zi-star" className="text-white text-2xl mx-auto" />
-              <Text size="small" className="text-white font-bold">
-                {user?.averageScore || "0.00"}
-              </Text>
-              <Text size="xSmall" className="text-orange-100">
-                Điểm trung bình
-              </Text>
-            </div>
-          </Box>
+         
         </div>
 
         {/* Menu Options */}

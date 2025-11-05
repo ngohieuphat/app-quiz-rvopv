@@ -61,11 +61,7 @@ function HomePage() {
         />
         
         {/* Loading screen info overlay (optional) */}
-        {loadingScreen && (
-          <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-xs">
-            {loadingScreen.filename}
-          </div>
-        )}
+    
         
         {/* CTA Button overlay ở trên bottom navigation */}
         <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center">

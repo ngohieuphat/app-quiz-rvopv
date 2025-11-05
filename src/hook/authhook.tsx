@@ -26,6 +26,7 @@ import { getUserById, checkUserExists } from "../api/auth";
   
   interface Gift {
     id: number;
+    name?: string;
     isUsed: boolean;
     createdAt: string;
     description: string;

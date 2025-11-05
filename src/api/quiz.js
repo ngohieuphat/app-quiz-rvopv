@@ -55,3 +55,20 @@ export const submitQuizSubmission = async (submissionData) => {
     throw error;
   }
 };
+
+// Get quiz submission result by userId and quizId
+export const getQuizSubmissionResult = async (userId, quizId) => {
+  try {
+    const url = `${BASE_URL}/api/miniApp/quiz/submissions/submit/result/${userId}/${quizId}`;
+    
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

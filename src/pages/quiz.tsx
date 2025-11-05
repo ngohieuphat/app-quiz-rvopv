@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { getQuizTemplateById, submitQuizSubmission } from "../api/quiz";
 import { createUserGift, checkUserExists } from "../api/auth";
 import { completeQuizStep } from "../api/apiStep";
+import { showAlertToast } from "../api/apiAlert";
 import useAuth from "../hook/authhook";
-import Swal from 'sweetalert2';
 
 // Define quiz interfaces
 interface QuizAnswer {
@@ -31,22 +31,26 @@ interface QuizQuestion {
   answers: QuizAnswer[];
 }
 
+interface RewardValue {
+  type?: string;
+  description: string;
+  amount?: string;
+  gift?: number;
+  topup?: number;
+  voucherCode?: string;
+  points?: number;
+  icon?: string;
+  badgeName?: string;
+  [key: string]: any; // Cho phép các trường khác trong tương lai
+}
+
 interface RewardItem {
   id: number;
-  level: string;
   totalQuestions: number;
   correctAnswers: number;
   message: string;
   rewardType: string;
-  rewardValue: {
-    type: string;
-    amount?: string;
-    description: string;
-    voucherCode?: string;
-    points?: number;
-    icon?: string;
-    badgeName?: string;
-  };
+  rewardValue: RewardValue;
   isActive: boolean;
   sortOrder: number;
 }
@@ -365,6 +369,11 @@ function QuizPage() {
           answers: Object.entries(answersToSubmit).map(([questionIndex, answerIndex]) => {
             const question = quiz.questions[parseInt(questionIndex)];
             
+            if (!question) {
+              console.error(`❌ Question not found for index ${questionIndex}`);
+              return null;
+            }
+            
             if (question.type === 'multi' && Array.isArray(answerIndex)) {
               // Multi-select: join multiple answers with comma
               const selectedContents = answerIndex
@@ -376,9 +385,10 @@ function QuizPage() {
               };
             } else if (typeof answerIndex === 'number' && answerIndex >= 0) {
               // Single-select: get single answer
+              const answerContent = question.answers[answerIndex]?.content;
               return {
                 questionId: question.id,
-                answer: question.answers[answerIndex].content
+                answer: answerContent
               };
             } else {
               // No answer selected
@@ -387,9 +397,8 @@ function QuizPage() {
                 answer: ""
               };
             }
-          })
+          }).filter(answer => answer !== null) // Filter out null values
         };
-
 
         // Submit to API and get result
         apiResult = await submitQuizSubmission(submissionData);
@@ -397,16 +406,13 @@ function QuizPage() {
         // Complete quiz step if submission is successful
         if (apiResult && (apiResult as any).success && (apiResult as any).data) {
           try {
-            console.log('🎯 Completing quiz step...');
             const quizStepData = {
               quizId: quiz.id.toString(),
               score: (apiResult as any).data.submission.scorePercentage || 0,
               timeSpent: totalTimeSpent
             };
-            console.log('Quiz step data:', quizStepData);
             
             const stepResult = await completeQuizStep(user.userId, quizStepData);
-            console.log('✅ Quiz step completed successfully:', stepResult);
           } catch (stepError) {
             console.error('❌ Error completing quiz step:', stepError);
             // Don't block the flow if step completion fails
@@ -416,8 +422,11 @@ function QuizPage() {
         // Create user gift if submission is successful
         if (apiResult && (apiResult as any).success && (apiResult as any).data) {
           try {
+            const reward = (apiResult as any).data.reward;
+            const giftDescription = reward?.message || reward?.rewardValue?.description || "Cảm ơn bạn đã tham gia quiz!";
             const giftData = {
-              description: (apiResult as any).data.reward.rewardValue?.description || (apiResult as any).data.reward.message
+              name: quiz?.name || "Phần thưởng Quiz",
+              description: giftDescription
             };
             
             await createUserGift(user.userId, giftData);
@@ -436,30 +445,25 @@ function QuizPage() {
                                userCheckResult.data.user.address.length > 0;
               
               if (!hasAddress) {
-                // User doesn't have address, show SweetAlert2
+                // User doesn't have address, show alert toast
                 setApiResult(apiResult);
                 
-                Swal.fire({
-                  title: 'Chúc mừng!',
-                  text: 'Bạn đã hoàn thành quiz! Để nhận phần thưởng, vui lòng cập nhật thông tin địa chỉ của bạn. Chỉ cần 1 bước cập nhật thông tin để nhận thưởng.',
-                  icon: 'success',
-                  showCancelButton: false,
-                  confirmButtonText: 'Cập nhật thông tin',
-                  confirmButtonColor: '#10b981',
-                  allowOutsideClick: false,
-                  allowEscapeKey: false
-                }).then((result) => {
-                  if (result.isConfirmed) {
-                    // Navigate to edit profile
-                    navigate("/edit-profile", { 
-                      state: { 
-                        fromQuiz: true,
-                        quizResult: apiResult,
-                        quizId: id
-                      } 
-                    });
-                  }
-                });
+                // Show alert toast and navigate to edit profile after delay
+                await showAlertToast(
+                  'success',
+                  'camelCase',
+                );
+                
+                // Wait a bit for toast to display, then navigate
+                setTimeout(() => {
+                  navigate("/edit-profile", { 
+                    state: { 
+                      fromQuiz: true,
+                      quizResult: apiResult,
+                      quizId: id
+                    } 
+                  });
+                }, 2000); // Wait 2 seconds
                 
                 return; // Don't navigate to result page yet
               }
@@ -472,37 +476,14 @@ function QuizPage() {
     } catch (error: any) {
       // Check if it's the "already submitted" error
       if (error.response && error.response.data && error.response.data.message === "User has already submitted this quiz") {
-        // Calculate total time spent for fallback result
-        const fallbackTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
-          const timeUsed = 30 - timeLeft;
-          return total + timeUsed;
-        }, 0) + (30 - timeLeft);
-
-        // Create fallback result for already submitted quiz
-        apiResult = {
-          success: true,
-          data: {
-            submission: {
-              id: Date.now(),
-              score: 100,
-              totalQuestions: quiz?.actualQuestions || quiz?.displayQuestions || quiz?.questions.length || 5,
-              correctAnswers: Object.values(finalAnswers || answers).filter((answer: any) => answer !== null && answer >= 0).length,
-              timeSpent: fallbackTimeSpent,
-              completedAt: new Date().toISOString()
-            },
-            reward: {
-              points: 100,
-              level: "excellent",
-              message: "Xuất sắc! Bạn có kiến thức y tế rất tốt!"
-            },
-            userStats: {
-              totalPoints: (user?.points || 0) + 100,
-              totalQuizzesCompleted: 1,
-              averageScore: "100.00"
-            }
-          }
-        } as any;
+        // User has already submitted this quiz, show error and redirect
+        setIsSubmitting(false);
+        // You can show a toast/alert here if needed
+        navigate("/quiz-selection");
+        return;
       }
+      // For other errors, let it fall through - apiResult will be undefined
+      setIsSubmitting(false);
     }
     
     // Calculate final time spent for navigation

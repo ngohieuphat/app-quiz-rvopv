@@ -157,6 +157,14 @@ export const createUserGift = async (userId, giftData) => {
       data: giftData,
     };
   
+    // Log data being sent to API
+    console.log("📤 createUserGift - Dữ liệu gửi lên:", {
+      userId,
+      giftData,
+      url: `${BASE_URL}/api/miniApp/quiz/users/${userId}/gifts`,
+      requestConfig
+    });
+  
     try {
       const result = await axios(requestConfig);
       return result.data;
@@ -285,21 +293,70 @@ export const submitDynamicForm = async (userId, formData) => {
   }
   };
 
-// Get Vietnamese provinces and districts
+// Get Vietnamese provinces using bom.asia API
+// API: https://bom.asia/api/locations/provinces
 export const getVietnameseProvinces = async () => {
-  const requestConfig = {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    baseURL: "https://provinces.open-api.vn",
-    url: `/api/v1/?depth=2`,
-  };
-
   try {
-    const result = await axios(requestConfig);
-    return result.data;
+    const response = await axios.get("https://bom.asia/api/locations/provinces", {
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      timeout: 10000,
+    });
+    
+    // Transform bom.asia format to expected format
+    // bom.asia: { success: true, data: [{ code, name, name_en, full_name, code_name }] }
+    // Expected: [{ code, name, codename, ... }]
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data.map(province => ({
+        code: province.code,
+        name: province.name,
+        codename: province.code_name || province.name.toLowerCase().replace(/\s+/g, '_'),
+        full_name: province.full_name,
+        name_en: province.name_en,
+        // Districts will be loaded separately when needed
+        districts: []
+      }));
+    }
+    
+    return response.data?.data || [];
   } catch (error) {
+    console.error("Error loading provinces from bom.asia:", error);
+    throw error;
+  }
+};
+
+// Get districts/wards by province_code using bom.asia API
+// API: https://bom.asia/api/locations/provinces/{province_code}/wards
+// Note: bom.asia API returns wards directly from province (no districts level)
+export const getDistrictsByProvinceId = async (provinceCode) => {
+  try {
+    const response = await axios.get(`https://bom.asia/api/locations/provinces/${provinceCode}/wards`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      timeout: 10000,
+    });
+    
+    // Transform bom.asia format to expected format
+    // bom.asia: { success: true, data: [{ code, name, name_en, full_name, code_name, province_code }] }
+    // Expected: [{ code, name, codename, ... }]
+    if (response.data && response.data.success && response.data.data) {
+      return response.data.data.map(ward => ({
+        code: ward.code,
+        name: ward.name,
+        codename: ward.code_name || ward.name.toLowerCase().replace(/\s+/g, '_'),
+        full_name: ward.full_name,
+        name_en: ward.name_en,
+        province_code: ward.province_code,
+      }));
+    }
+    
+    return response.data?.data || [];
+  } catch (error) {
+    console.error("Error loading wards from bom.asia:", error);
     throw error;
   }
 };

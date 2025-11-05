@@ -65,7 +65,6 @@ function GiftsPage() {
       
       // Swipe từ trái sang phải (ít nhất 50px) và không quá nhiều theo chiều dọc
       if (diffX > 50 && diffY < 100 && startX < 50) {
-        console.log('Swipe gesture detected!'); // Debug log
         handleGoBack();
       }
     };
@@ -120,7 +119,7 @@ function GiftsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-3">
           {/* Total Gifts */}
-          <Box className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-star" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
@@ -130,10 +129,10 @@ function GiftsPage() {
                 Tổng phần thưởng
               </Text>
             </div>
-          </Box>
+          </Box> */}
 
           {/* Available Gifts */}
-          <Box className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
@@ -143,10 +142,10 @@ function GiftsPage() {
                 Chưa dùng
               </Text>
             </div>
-          </Box>
+          </Box> */}
 
           {/* Used Gifts */}
-          <Box className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check-circle" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
@@ -156,7 +155,7 @@ function GiftsPage() {
                 Đã sử dụng
               </Text>
             </div>
-          </Box>
+          </Box> */}
         </div>
 
         {/* Gifts List */}
@@ -172,7 +171,13 @@ function GiftsPage() {
             </div>
             
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {user.giftName.map((gift, index) => (
+              {[...user.giftName]
+                .sort((a, b) => {
+                  const dateA = new Date(a.createdAt).getTime();
+                  const dateB = new Date(b.createdAt).getTime();
+                  return dateB - dateA; // Mới nhất trước
+                })
+                .map((gift, index) => (
                 <div 
                   key={gift.id}
                   className={`p-4 rounded-xl border-2 transition-all duration-200 ${
@@ -181,31 +186,47 @@ function GiftsPage() {
                       : 'border-green-200 bg-green-50 hover:bg-green-100 hover:shadow-md'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          gift.isUsed ? 'bg-gray-200' : 'bg-green-200'
-                        }`}>
-                          <Icon 
-                            icon={gift.isUsed ? "zi-check" : "zi-star"} 
-                            className={`text-lg ${gift.isUsed ? 'text-gray-500' : 'text-green-600'}`}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          {gift.isUsed && (
-                            <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full">
-                              Đã sử dụng
-                            </span>
+                  <div className="flex items-start space-x-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      gift.isUsed ? 'bg-gray-200' : 'bg-green-200'
+                    }`}>
+                      <Icon 
+                        icon={gift.isUsed ? "zi-check" : "zi-star"} 
+                        className={`text-xl ${gift.isUsed ? 'text-gray-500' : 'text-green-600'}`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          {gift.name && (
+                            <Text 
+                              size="normal" 
+                              className={`font-bold mb-1 ${
+                                gift.isUsed ? 'text-gray-500' : 'text-gray-800'
+                              }`}
+                            >
+                              {gift.name}
+                            </Text>
+                          )}
+                          {gift.description && (
+                            <Text 
+                              size="small" 
+                              className={`line-clamp-2 ${
+                                gift.isUsed ? 'text-gray-400' : 'text-gray-600'
+                              }`}
+                            >
+                              {gift.description}
+                            </Text>
                           )}
                         </div>
+                        {gift.isUsed && (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium flex-shrink-0">
+                            Đã sử dụng
+                          </span>
+                        )}
                       </div>
                       
-                      <Text size="normal" className={`${gift.isUsed ? 'text-gray-500' : 'text-gray-700'} mb-2`}>
-                        {gift.description}
-                      </Text>
-                      
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-2">
                         <Text size="small" className="text-gray-400">
                           {new Date(gift.createdAt).toLocaleDateString('vi-VN', {
                             day: '2-digit',

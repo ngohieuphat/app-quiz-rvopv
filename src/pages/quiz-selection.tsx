@@ -1,7 +1,8 @@
 import { Button, Icon, Page, Text, Box, useNavigate } from "zmp-ui";
 import useAuth from "../hook/authhook";
-import { getQuizTemplates } from "../api/quiz";
+import { getQuizTemplates, getQuizSubmissionResult } from "../api/quiz";
 import { createUser, checkAttempt, checkUserExists } from "../api/auth";
+import { showWarningAlert, showInfoAlert, showErrorAlert } from "../api/apiAlert";
 import { useState, useEffect } from "react";
 import useZaloUserData from "../hook/useZaloUserData";
 import Navbar from "../components/Navbar";
@@ -42,6 +43,9 @@ function QuizSelectionPage() {
   const { userInfo, phoneNumber, fetchUserData, isLoading: isLoadingUser } = useZaloUserData();
   const [isProcessing, setIsProcessing] = useState(false);
   const [shouldFetch, setShouldFetch] = useState(false);
+  const [showQuizResultModal, setShowQuizResultModal] = useState(false);
+  const [selectedQuizIdForResult, setSelectedQuizIdForResult] = useState<number | null>(null);
+  const [submissionId, setSubmissionId] = useState<number | null>(null);
   useEffect(() => {
     const fetchQuizTemplates = async () => {
       try {
@@ -121,6 +125,9 @@ function QuizSelectionPage() {
           // Xử lý kết quả check attempt
           if (attemptResult && attemptResult.success && attemptResult.data) {
             if (attemptResult.data.hasAttempted) {
+              // Lưu submissionId nếu có trong response
+              const submissionIdFromAttempt = attemptResult.data.submissionId || attemptResult.data.submission?.id || null;
+              
               // User đã làm quiz này rồi - kiểm tra address
               try {
                 const userCheckResult = await checkUserExists(user.userId);
@@ -133,7 +140,7 @@ function QuizSelectionPage() {
                   
                   if (!hasAddress) {
                     // User chưa cập nhật thông tin nhận thưởng
-                    alert("Bạn đã làm quiz này rồi! Bạn chưa cập nhật thông tin nhận thưởng. Vui lòng cập nhật thông tin để nhận phần thưởng.");
+                    await showInfoAlert("updateRewardInfo", "Bạn đã làm quiz này rồi! Bạn chưa cập nhật thông tin nhận thưởng. Vui lòng cập nhật thông tin để nhận phần thưởng.");
                     
                     // Navigate to edit profile
                     navigate("/edit-profile", {
@@ -144,16 +151,18 @@ function QuizSelectionPage() {
                       }
                     });
                   } else {
-                    // User đã có address - chỉ thông báo đã làm quiz
-                    alert("Bạn đã làm quiz này rồi!");
+                    // User đã có address - hiển thị modal với nút xem kết quả
+                    setSelectedQuizIdForResult(quizId);
+                    setSubmissionId(submissionIdFromAttempt);
+                    setShowQuizResultModal(true);
                   }
                 } else {
                   // Không kiểm tra được user info - chỉ thông báo đã làm quiz
-                  alert("Bạn đã làm quiz này rồi!");
+                  await showWarningAlert("quizAlreadyCompleted", "Bạn đã làm quiz này rồi!");
                 }
               } catch (addressError) {
                 // Lỗi khi kiểm tra address - chỉ thông báo đã làm quiz
-                alert("Bạn đã làm quiz này rồi!");
+                await showWarningAlert("quizAlreadyCompleted", "Bạn đã làm quiz này rồi!");
               }
               
               setIsProcessing(false);
@@ -167,14 +176,14 @@ function QuizSelectionPage() {
             }
           } else {
             // API không trả về data hoặc lỗi, không cho qua
-            alert("Không thể kiểm tra trạng thái quiz. Vui lòng thử lại!");
+            await showErrorAlert("quizStatusCheckFailed", "Không thể kiểm tra trạng thái quiz. Vui lòng thử lại!");
             setIsProcessing(false);
             setShouldFetch(false);
             return;
           }
         } catch (attemptError) {
           // Nếu check attempt lỗi, không cho qua
-          alert("Lỗi khi kiểm tra trạng thái quiz. Vui lòng thử lại!");
+          await showErrorAlert("quizStatusError", "Lỗi khi kiểm tra trạng thái quiz. Vui lòng thử lại!");
           setIsProcessing(false);
           setShouldFetch(false);
           return;
@@ -209,6 +218,37 @@ function QuizSelectionPage() {
     // For now, we'll just log or remove if not needed
     // If you have useNavigate, you would do:
     // navigate("/add-event");
+  };
+
+  const handleViewQuizResult = async () => {
+    if (!selectedQuizIdForResult || !user?.userId) {
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setShowQuizResultModal(false);
+      
+      // Gọi API để lấy kết quả quiz
+      const quizResult = await getQuizSubmissionResult(user.userId, selectedQuizIdForResult);
+      
+      if (quizResult && quizResult.success) {
+        // Navigate đến quiz-result với dữ liệu (cần có ID trong route)
+        navigate(`/quiz-result/${selectedQuizIdForResult}`, {
+          state: {
+            apiResult: quizResult,
+            fromQuizSelection: true
+          }
+        });
+      } else {
+        await showErrorAlert("quizResultNotFound", "Không thể tải kết quả quiz. Vui lòng thử lại!");
+      }
+    } catch (error: any) {
+      await showErrorAlert("quizResultError", `Lỗi khi tải kết quả quiz: ${error?.response?.data?.message || error?.message || "Vui lòng thử lại!"}`);
+    } finally {
+      setIsProcessing(false);
+      setSelectedQuizIdForResult(null);
+    }
   };
   return (
     <Page className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-200">
@@ -359,6 +399,47 @@ function QuizSelectionPage() {
           }
           />
       </div>
+
+      {/* Modal hiển thị khi user đã làm quiz và có address */}
+      {showQuizResultModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <Box className="bg-white rounded-2xl p-6 mx-4 max-w-sm w-full shadow-xl">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <Icon icon="zi-star" className="text-yellow-500 text-4xl" />
+              </div>
+              <Text.Title size="normal" className="text-gray-800 font-bold">
+                Bạn đã làm quiz này rồi!
+              </Text.Title>
+              <Text size="normal" className="text-gray-600">
+                Bạn muốn xem lại kết quả quiz không?
+              </Text>
+              <div className="flex space-x-3 pt-2">
+                <Button
+                  variant="secondary"
+                  size="medium"
+                  onClick={() => {
+                    setShowQuizResultModal(false);
+                    setSelectedQuizIdForResult(null);
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 font-semibold"
+                >
+                  Đóng
+                </Button>
+                <Button
+                  variant="primary"
+                  size="medium"
+                  onClick={handleViewQuizResult}
+                  disabled={isProcessing}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-600 text-white font-semibold"
+                >
+                  {isProcessing ? "Đang tải..." : "Xem kết quả"}
+                </Button>
+              </div>
+            </div>
+          </Box>
+        </div>
+      )}
     </Page>
   );
 }

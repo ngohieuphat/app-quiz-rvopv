@@ -65,7 +65,6 @@ function ViewQuizHistoryPage() {
       
       // Swipe từ trái sang phải (ít nhất 50px) và không quá nhiều theo chiều dọc
       if (diffX > 50 && diffY < 100 && startX < 50) {
-        console.log('Swipe gesture detected!'); // Debug log
         handleGoBack();
       }
     };
@@ -118,7 +117,7 @@ function ViewQuizHistoryPage() {
     return (
       <div className="space-y-4">
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {/* Total Quizzes */}
           <Box className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
@@ -133,7 +132,7 @@ function ViewQuizHistoryPage() {
           </Box>
 
           {/* Average Score */}
-          <Box className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 shadow-lg">
+          {/* <Box className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 shadow-lg">
             <div className="text-center space-y-2">
               <Icon icon="zi-check" className="text-white text-xl mx-auto" />
               <Text size="small" className="text-white font-bold">
@@ -143,7 +142,7 @@ function ViewQuizHistoryPage() {
                 Điểm TB
               </Text>
             </div>
-          </Box>
+          </Box> */}
 
           {/* Completed Quizzes */}
           <Box className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-4 shadow-lg">
@@ -194,7 +193,7 @@ function ViewQuizHistoryPage() {
                         </div>
                         <div>
                           <Text size="normal" className={`font-bold ${attempt.status === "completed" ? 'text-green-600' : 'text-gray-500'}`}>
-                            {attempt.score}/100 điểm
+                            {attempt.name}
                           </Text>
                           {attempt.status !== "completed" && (
                             <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full ml-2">
@@ -204,9 +203,9 @@ function ViewQuizHistoryPage() {
                         </div>
                       </div>
                       
-                      <Text size="normal" className={`${attempt.status === "completed" ? 'text-gray-700' : 'text-gray-500'} mb-2`}>
+                      {/* <Text size="normal" className={`${attempt.status === "completed" ? 'text-gray-700' : 'text-gray-500'} mb-2`}>
                         {attempt.name}
-                      </Text>
+                      </Text> */}
                       
                       <div className="flex items-center justify-between">
                         <Text size="small" className="text-gray-400">

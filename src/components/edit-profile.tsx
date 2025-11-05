@@ -1,8 +1,9 @@
 import { Button, Icon, Page, Text, Box, useNavigate, useLocation, Input } from "zmp-ui";
 import useAuth from "../hook/authhook";
 import { useState, useEffect } from "react";
-import { getDynamicFormConfig, getUserFormData, submitDynamicForm, getVietnameseProvinces } from "../api/auth";
+import { getDynamicFormConfig, getUserFormData, submitDynamicForm, getVietnameseProvinces, getDistrictsByProvinceId } from "../api/auth";
 import { completePharmacyStep } from "../api/apiStep";
+import { showAlertToast } from "../api/apiAlert";
 import Navbar from "./Navbar";
 import { showToast, openWebview } from "zmp-sdk/apis";
 
@@ -129,23 +130,35 @@ function EditProfilePage() {
           p.codename === provinceValue
         );
         
-        if (selectedProvince && selectedProvince.districts) {
-          setDistricts(selectedProvince.districts);
+        if (selectedProvince) {
+          // Use province_code to fetch wards from bom.asia API
+          const provinceId = selectedProvince.code;
           
-          // Reset district selection if current district is not in new districts
-          if (formData.district) {
-            const districtExists = selectedProvince.districts.find(d => 
-              d.code.toString() === formData.district.toString() ||
-              d.name === formData.district ||
-              d.codename === formData.district
-            );
-            if (!districtExists) {
-              setFormData(prev => ({ ...prev, district: "" }));
+          try {
+            const districtsData = await getDistrictsByProvinceId(provinceId);
+            setDistricts(districtsData || []);
+            
+            // Reset district selection if current district is not in new districts
+            if (formData.district && districtsData) {
+              const districtExists = districtsData.find(d => 
+                d.code.toString() === formData.district.toString() ||
+                d.name === formData.district ||
+                d.codename === formData.district
+              );
+              if (!districtExists) {
+                setFormData(prev => ({ ...prev, district: "" }));
+              }
             }
+          } catch (districtError) {
+            console.error("Error fetching districts:", districtError);
+            setDistricts([]);
           }
+        } else {
+          setDistricts([]);
         }
       } catch (error) {
         console.error("Error loading districts:", error);
+        setDistricts([]);
       } finally {
         setLoadingDistricts(false);
       }
@@ -248,11 +261,7 @@ function EditProfilePage() {
       
       // Complete pharmacy step after successful form submission
       try {
-        console.log('🏥 Completing pharmacy step...');
-        console.log('Formatted data for pharmacy step:', formattedData);
-        
         const pharmacyStepResult = await completePharmacyStep(user.userId, formattedData);
-        console.log('✅ Pharmacy step completed successfully:', pharmacyStepResult);
       } catch (pharmacyStepError) {
         console.error('❌ Error completing pharmacy step:', pharmacyStepError);
         // Don't block the flow if pharmacy step completion fails
@@ -266,9 +275,7 @@ function EditProfilePage() {
       
       if (fromQuiz && quizResult && quizId) {
         // Coming from quiz flow, show thank you message and go to quiz result
-        await showToast({
-          message: "Cảm ơn bạn đã điền thông tin!",
-        });
+        await showAlertToast("success", "infoSubmitted", "Cảm ơn bạn đã điền thông tin!");
         
         // Wait a bit for toast to display and data to be ready
         setTimeout(() => {
@@ -281,9 +288,7 @@ function EditProfilePage() {
         }, 3000); // Wait 3 seconds
       } else if (fromQuizSelection && quizId) {
         // Coming from quiz selection (user already completed quiz but no address)
-        await showToast({
-          message: "Cảm ơn bạn đã cập nhật thông tin! Bây giờ bạn có thể nhận phần thưởng.",
-        });
+        await showAlertToast("success", "infoUpdated", "Cảm ơn bạn đã cập nhật thông tin! Bây giờ bạn có thể nhận phần thưởng.");
         
         // Wait a bit for toast to display and go back to quiz selection
         setTimeout(() => {
@@ -291,16 +296,12 @@ function EditProfilePage() {
         }, 2000); // Wait 2 seconds
       } else {
         // Normal flow, go to profile
-        await showToast({
-          message: "Lưu thông tin thành công!",
-        });
+        await showAlertToast("success", "infoSaved", "Lưu thông tin thành công!");
         navigate("/profile");
       }
     } catch (error: any) {
       console.error("Error submitting form:", error);
-      await showToast({
-        message: "Có lỗi xảy ra, vui lòng thử lại!",
-      });
+      await showAlertToast("error", "generalError", "Có lỗi xảy ra, vui lòng thử lại!");
     } finally {
       setIsLoading(false);
     }
@@ -312,9 +313,7 @@ function EditProfilePage() {
     
     if (fromQuiz && quizResult && quizId) {
       // Coming from quiz flow, show different message and go to quiz result
-      await showToast({
-        message: "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!",
-      });
+      await showAlertToast("warning", "infoUpdateCancelled", "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!");
       
       // Wait a bit for toast to display and go to quiz result
       setTimeout(() => {
@@ -337,9 +336,7 @@ function EditProfilePage() {
     
     if (fromQuiz && quizResult && quizId) {
       // Coming from quiz flow, show different message and go to quiz result
-      await showToast({
-        message: "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!",
-      });
+      await showAlertToast("warning", "infoUpdateCancelled", "Bạn đã hủy cập nhật thông tin. Vẫn có thể xem kết quả quiz!");
       
       // Wait a bit for toast to display and go to quiz result
       setTimeout(() => {
@@ -532,11 +529,11 @@ function EditProfilePage() {
               ))}
             </select>
             
-            {/* Loading indicator for districts */}
+            {/* Loading indicator for districts/wards */}
             {name === 'district' && loadingDistricts && (
               <div className="flex items-center space-x-2 text-gray-500">
                 <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"></div>
-                <Text size="small">Đang tải quận/huyện...</Text>
+                <Text size="small">Đang tải...</Text>
               </div>
             )}
             
