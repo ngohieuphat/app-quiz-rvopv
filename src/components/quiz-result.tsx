@@ -117,6 +117,15 @@ function QuizResultPage() {
     checkUser();
   }, [user?.userId]);
 
+  const handleFollowOAButtonClick = async () => {
+    // Gọi follow OA và ở lại trang quiz-result
+    // Sau khi follow OA thành công, refresh user data để ẩn button (vì đã hoàn thành step 3)
+    await handleFollowOAThenNavigate("");
+    
+    // Refresh user data để cập nhật userSteps (để ẩn button nếu đã hoàn thành step 3)
+    await refreshUserData();
+  };
+
   const handleFollowOAThenNavigate = async (destination: string) => {
     try {
       await followOA({
@@ -154,13 +163,16 @@ function QuizResultPage() {
     } catch (error: any) {
       const code = error?.code;
       if (code === -201) {
-        // Người dùng từ chối, vẫn chuyển trang
+        // Người dùng từ chối, không làm gì
       } else {
-        // Có lỗi khác, vẫn chuyển trang
+        // Có lỗi khác, không làm gì
       }
     } finally {
-      // Luôn chuyển trang sau khi gọi SDK
-      navigate(destination);
+      // Chỉ chuyển trang nếu có destination
+      if (destination) {
+        navigate(destination);
+      }
+      // Nếu destination rỗng, ở lại trang hiện tại (quiz-result)
     }
   };
 
@@ -223,6 +235,11 @@ function QuizResultPage() {
   // Fallback userStats nếu không có trong response
   const safeUserStats = userStats || { totalQuizzesCompleted: 0 };
   
+  // Kiểm tra user đã hoàn thành stepOrder 3 (Follow OA) chưa
+  const hasCompletedStep3 = user?.userSteps?.some(
+    step => step.stepOrder === 3 && step.isCompleted === true
+  ) || false;
+  
   // Ensure reward exists with safe defaults
   // const safeReward = reward || {
   //   message: "Cảm ơn bạn đã tham gia đố vui!",
@@ -253,23 +270,29 @@ function QuizResultPage() {
             <Text size="normal" className="text-gray-600 mb-4">
              Chúc mừng bạn đã nhận được quà tặng {reward?.message}
             </Text>
-            <Text size="normal" className="text-gray-600 mb-4">Chỉ còn 1 bước nữa thôi để nhận quà nhé {user?.name} ơi!!!!
-            </Text>
-            {/* Follow OA Button */}
-            <div className="mt-4">
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={() => handleFollowOAThenNavigate("/quiz-selection")}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                <div className="flex items-center justify-center space-x-2 leading-none">
-                  
-                  <Icon icon="zi-star" className="text-lg flex-shrink-0 leading-none" />
-                  <span className="text-sm font-semibold leading-none">Quan tâm OA để nhận quà ngay!</span>
+            
+            {/* Chỉ hiển thị text và button nếu chưa hoàn thành stepOrder 3 */}
+            {!hasCompletedStep3 && (
+              <>
+                <Text size="normal" className="text-gray-600 mb-4">
+                  Chỉ còn 1 bước nữa thôi để nhận quà nhé {user?.name} ơi!!!!
+                </Text>
+                {/* Follow OA Button */}
+                <div className="mt-4">
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    onClick={handleFollowOAButtonClick}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="flex items-center justify-center space-x-2 leading-none">
+                      <Icon icon="zi-star" className="text-lg flex-shrink-0 leading-none" />
+                      <span className="text-sm font-semibold leading-none">Quan tâm OA để nhận quà ngay!</span>
+                    </div>
+                  </Button>
                 </div>
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         </Box>
 
