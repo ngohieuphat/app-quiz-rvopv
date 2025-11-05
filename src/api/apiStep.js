@@ -9,7 +9,7 @@ export const completeQuizStep = async (userId, stepData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stepId: 7,
+        stepId: 10,
         stepData: {
           quizId: stepData.quizId,
           score: stepData.score,
@@ -38,7 +38,7 @@ export const completePharmacyStep = async (userId, stepData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stepId: 8,
+        stepId: 11,
         stepData: stepData
       })
     });
@@ -63,7 +63,7 @@ export const completeFollowOAStep = async (userId, stepData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stepId: 9,
+        stepId: 12,
         stepData: {
           followedOA: stepData.followedOA
         }

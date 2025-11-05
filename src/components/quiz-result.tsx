@@ -5,6 +5,7 @@ import Navbar from "./Navbar";
 import { checkUserExists } from "../api/auth";
 import { completeFollowOAStep } from "../api/apiStep";
 import { showAlertToast } from "../api/apiAlert";
+import { triggerTopup } from "../api/topup";
 import { followOA, showToast, openWebview } from "zmp-sdk/apis";
 
 interface RewardValue {
@@ -130,6 +131,20 @@ function QuizResultPage() {
           };
           
           const followOAStepResult = await completeFollowOAStep(user.userId, followOAData);
+          
+          // If completeFollowOAStep successful, trigger topup
+          if (followOAStepResult && followOAStepResult.success) {
+            // Get quizId from resultData or location.state
+            const quizId = resultData?.data?.quiz?.id || location.state?.quizId || location.state?.quiz?.id;
+            
+            if (quizId && user.userId) {
+              try {
+                await triggerTopup(user.userId, quizId);
+              } catch (topupError) {
+                // Don't block the flow if topup fails
+              }
+            }
+          }
         } catch (followOAStepError) {
           // Don't block the flow if follow OA step completion fails
         }

@@ -41,6 +41,29 @@ import { getUserById, checkUserExists } from "../api/auth";
     completedAt: string;
   }
 
+  interface UserStep {
+    id: number;
+    stepId: number | null;
+    stepName: string | null;
+    stepDescription: string | null;
+    stepOrder: number | null;
+    stepType: string | null;
+    isCompleted: boolean;
+    completedAt: string;
+    stepData: any;
+    attempts: number;
+    isSkipped: boolean;
+  }
+
+  interface DynamicFormData {
+    role?: string;
+    address?: string;
+    district?: string;
+    province_city?: string;
+    company_organization?: string;
+    [key: string]: any; // Cho phép các trường khác
+  }
+
   interface UserAuth {
     id: number; // ID người dùng
     name: string; // Tên người dùng
@@ -61,6 +84,8 @@ import { getUserById, checkUserExists } from "../api/auth";
     createdAt: string; // Thời gian tạo
     updatedAt: string; // Thời gian cập nhật
     quizAttempts: QuizAttempt[]; // Lịch sử làm quiz
+    dynamicFormData?: DynamicFormData; // Dữ liệu form động
+    userSteps?: UserStep[]; // Các bước đã hoàn thành
   }
   
   interface UseProviderAuth {
@@ -117,6 +142,8 @@ import { getUserById, checkUserExists } from "../api/auth";
                 createdAt: apiUser.createdAt,
                 updatedAt: apiUser.updatedAt,
                 quizAttempts: apiUser.quizAttempts || [],
+                dynamicFormData: apiUser.dynamicFormData || undefined,
+                userSteps: apiUser.userSteps || [],
               });
   
               setStatus("LOGGED_IN");
