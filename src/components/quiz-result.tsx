@@ -240,6 +240,9 @@ function QuizResultPage() {
     step => step.stepOrder === 3 && step.isCompleted === true
   ) || false;
   
+  // Kiểm tra user đã follow OA chưa
+  const hasFollowedOA = user?.followedOA === true;
+  
   // Ensure reward exists with safe defaults
   // const safeReward = reward || {
   //   message: "Cảm ơn bạn đã tham gia đố vui!",
@@ -271,8 +274,8 @@ function QuizResultPage() {
              Chúc mừng bạn đã nhận được quà tặng {reward?.message}
             </Text>
             
-            {/* Chỉ hiển thị text và button nếu chưa hoàn thành stepOrder 3 */}
-            {!hasCompletedStep3 && (
+            {/* Chỉ hiển thị text và button nếu chưa hoàn thành stepOrder 3 và chưa follow OA */}
+            {!hasCompletedStep3 && !hasFollowedOA && (
               <>
                 <Text size="normal" className="text-gray-600 mb-4">
                   Chỉ còn 1 bước nữa thôi để nhận quà nhé {user?.name} ơi!!!!

@@ -1,9 +1,8 @@
 import { Button, Icon, Page, Text, Box, useNavigate, useLocation } from "zmp-ui";
 import { useState, useEffect, useRef } from "react";
 import { getQuizTemplateById, submitQuizSubmission } from "../api/quiz";
-import { createUserGift, checkUserExists } from "../api/auth";
+import { createUserGift } from "../api/auth";
 import { completeQuizStep } from "../api/apiStep";
-import { showAlertToast } from "../api/apiAlert";
 import useAuth from "../hook/authhook";
 
 // Define quiz interfaces
@@ -432,44 +431,6 @@ function QuizPage() {
             await createUserGift(user.userId, giftData);
           } catch (giftError) {
             // Don't block the flow if gift creation fails
-          }
-
-          // Check if user has address after successful submission
-          try {
-            const userCheckResult = await checkUserExists(user.userId);
-            
-            if (userCheckResult && userCheckResult.success && userCheckResult.data) {
-              const hasAddress = userCheckResult.data.hasAddress && 
-                               userCheckResult.data.user && 
-                               userCheckResult.data.user.address && 
-                               userCheckResult.data.user.address.length > 0;
-              
-              if (!hasAddress) {
-                // User doesn't have address, show alert toast
-                setApiResult(apiResult);
-                
-                // Show alert toast and navigate to edit profile after delay
-                await showAlertToast(
-                  'success',
-                  'camelCase',
-                );
-                
-                // Wait a bit for toast to display, then navigate
-                setTimeout(() => {
-                  navigate("/edit-profile", { 
-                    state: { 
-                      fromQuiz: true,
-                      quizResult: apiResult,
-                      quizId: id
-                    } 
-                  });
-                }, 2000); // Wait 2 seconds
-                
-                return; // Don't navigate to result page yet
-              }
-            }
-          } catch (addressError) {
-            // If address check fails, continue to result page
           }
         }
       }
