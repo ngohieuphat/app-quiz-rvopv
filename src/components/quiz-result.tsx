@@ -242,6 +242,8 @@ function QuizResultPage() {
   
   // Kiểm tra user đã follow OA chưa
   const hasFollowedOA = user?.followedOA === true;
+
+  const headerRewardMessage = reward?.message?.trim() || "Cảm ơn bạn đã tham gia quiz!";
   
   // Ensure reward exists with safe defaults
   // const safeReward = reward || {
@@ -271,7 +273,7 @@ function QuizResultPage() {
               Chúc mừng bạn đã hoàn thành {submission.totalQuestions} câu đố
             </Text.Title>
             <Text size="normal" className="text-gray-600 mb-4">
-             Chúc mừng bạn đã nhận được quà tặng {reward?.message}
+            {headerRewardMessage}
             </Text>
             
             {/* Chỉ hiển thị text và button nếu chưa hoàn thành stepOrder 3 và chưa follow OA */}
@@ -309,28 +311,25 @@ function QuizResultPage() {
                   {reward.rewardValue.type}
                 </Text>
               )}
-              {/* Show description from rewardValue if available */}
-              {reward?.rewardValue?.description && (
+              {reward?.rewardValue?.description ? (
                 <Text size="normal" className="text-white font-bold">
                   {reward.rewardValue.description}
                 </Text>
-              )}
-              {/* Show message if no description */}
-              {!reward?.rewardValue?.description && reward?.message && (
+              ) : reward?.message ? (
                 <Text size="normal" className="text-white font-bold">
                   {reward.message}
                 </Text>
-              )}
-              {reward?.rewardValue?.gift && (
+              ) : null}
+              {/* {reward?.rewardValue?.gift && (
                 <Text size="small" className="text-yellow-100 font-medium mt-2">
-                  Giá trị: {reward.rewardValue.gift.toLocaleString('vi-VN')} đ
+                  Phần thưởng: {reward.rewardValue.gift.toLocaleString('vi-VN')} đ
                 </Text>
               )}
               {reward?.rewardValue?.topup && (
                 <Text size="small" className="text-yellow-100 font-medium mt-2">
-                  Nạp tiền: {reward.rewardValue.topup.toLocaleString('vi-VN')} đ
+                  Phần thưởng: {reward.rewardValue.topup.toLocaleString('vi-VN')} đ
                 </Text>
-              )}
+              )} */}
             </div>
           </Box>
         )}

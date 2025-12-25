@@ -112,7 +112,8 @@ function ViewQuizHistoryPage() {
     // Tính thống kê
     const totalQuizzes = user.quizAttempts.length;
     const averageScore = user.averageScore || "0.00";
-    const completedQuizzes = user.quizAttempts.filter(attempt => attempt.status === "completed").length;
+    // Kiểm tra completedAt thay vì status (vì API không trả về status)
+    const completedQuizzes = user.quizAttempts.filter(attempt => attempt.completedAt).length;
 
     return (
       <div className="space-y-4">
@@ -171,66 +172,70 @@ function ViewQuizHistoryPage() {
             </div>
             
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {user.quizAttempts.map((attempt, index) => (
-                <div 
-                  key={attempt.id}
-                  className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                    attempt.status === "completed"
-                      ? 'border-green-200 bg-green-50 hover:bg-green-100 hover:shadow-md'
-                      : 'border-gray-200 bg-gray-50 opacity-70'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          attempt.status === "completed" ? 'bg-green-200' : 'bg-gray-200'
-                        }`}>
-                          <Icon 
-                            icon={attempt.status === "completed" ? "zi-check" : "zi-star"} 
-                            className={`text-lg ${attempt.status === "completed" ? 'text-green-600' : 'text-gray-500'}`}
-                          />
-                        </div>
-                        <div>
-                          <Text size="normal" className={`font-bold ${attempt.status === "completed" ? 'text-green-600' : 'text-gray-500'}`}>
-                            {attempt.name}
-                          </Text>
-                          {attempt.status !== "completed" && (
-                            <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full ml-2">
-                              Chưa hoàn thành
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* <Text size="normal" className={`${attempt.status === "completed" ? 'text-gray-700' : 'text-gray-500'} mb-2`}>
-                        {attempt.name}
-                      </Text> */}
-                      
-                      <div className="flex items-center justify-between">
-                        <Text size="small" className="text-gray-400">
-                          {new Date(attempt.completedAt).toLocaleDateString('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </Text>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            attempt.status === "completed" 
-                              ? 'bg-green-100 text-green-600' 
-                              : 'bg-gray-100 text-gray-600'
+              {user.quizAttempts.map((attempt, index) => {
+                // Kiểm tra completedAt thay vì status (vì API không trả về status)
+                const isCompleted = !!attempt.completedAt;
+                
+                return (
+                  <div 
+                    key={attempt.id}
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                      isCompleted
+                        ? 'border-green-200 bg-green-50 hover:bg-green-100 hover:shadow-md'
+                        : 'border-gray-200 bg-gray-50 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            isCompleted ? 'bg-green-200' : 'bg-gray-200'
                           }`}>
-                            {attempt.status === "completed" ? "Hoàn thành" : "Chưa hoàn thành"}
-                          </span>
+                            <Icon 
+                              icon={isCompleted ? "zi-check" : "zi-star"} 
+                              className={`text-lg ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}
+                            />
+                          </div>
+                          <div>
+                            <Text size="normal" className={`font-bold ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                              {attempt.name}
+                            </Text>
+                            {!isCompleted && (
+                              <span className="px-2 py-1 bg-gray-300 text-gray-600 text-xs rounded-full ml-2">
+                                Chưa hoàn thành
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <Text size="small" className="text-gray-400">
+                            {attempt.completedAt 
+                              ? new Date(attempt.completedAt).toLocaleDateString('vi-VN', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : 'Chưa hoàn thành'
+                            }
+                          </Text>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              isCompleted
+                                ? 'bg-green-100 text-green-600' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {isCompleted ? "Hoàn thành" : "Chưa hoàn thành"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </Box>

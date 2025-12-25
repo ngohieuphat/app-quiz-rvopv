@@ -98,7 +98,7 @@ const Navbar: React.FC<NavbarProps> = ({
     } else {
       // Open Zalo link using ZMP openWebview
       openWebview({
-        url: "https://zalo.me/2674761099009385171",
+        url: "https://zalo.me/129295702906748400",
       });
     }
   };

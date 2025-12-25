@@ -48,8 +48,16 @@ const Layout = () => {
   useEffect(() => {
     const checkAndFetchUserInfo = async () => {
       try {
-        // Clear old token
+        // Clear old tokens (cả token cũ và access_token cũ)
         localStorage.removeItem("token");
+        localStorage.removeItem("access_token");
+        
+        // Clear nativeStorage nếu có
+        try {
+          await nativeStorage.removeItem("access_token");
+        } catch (e) {
+          // Ignore if nativeStorage not available
+        }
 
         getAccessToken({
           success: async (accessToken: string) => {

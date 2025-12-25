@@ -15,6 +15,7 @@ interface QuizQuestion {
   id: number;
   type: string;
   points: number;
+  timeLimit?: number;
   content: {
     text: string;
     type: string;
@@ -110,13 +111,28 @@ function QuizPage() {
         const response = await getQuizTemplateById(parseInt(id));
         
         if (response && response.success && response.data && response.data.quiz) {
-          // Randomize answer order for each question
+          // Randomize answer order for each question and normalize content structure
           const randomizedQuiz = {
             ...response.data.quiz,
-            questions: response.data.quiz.questions.map(question => ({
-              ...question,
-              answers: question.answers.sort(() => Math.random() - 0.5)
-            }))
+            questions: response.data.quiz.questions.map(question => {
+              // Transform content: if it's a string, convert to object format
+              let normalizedContent;
+              if (typeof question.content === 'string') {
+                normalizedContent = {
+                  text: question.content,
+                  type: question.type || 'text'
+                };
+              } else {
+                // Already in object format, use as is
+                normalizedContent = question.content;
+              }
+              
+              return {
+                ...question,
+                content: normalizedContent,
+                answers: question.answers.sort(() => Math.random() - 0.5)
+              };
+            })
           };
           
           setQuiz(randomizedQuiz);
@@ -167,6 +183,9 @@ function QuizPage() {
     if (quiz && quiz.questions.length > 0) {
       timeUpHandled.current = false; // Reset flag
       
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      const questionTimeLimit = currentQuestion?.timeLimit || 30; // Default to 30 if not provided
+      
       // Check if we have saved time for this question
       const savedTime = questionTimes[currentQuestionIndex];
       if (savedTime !== undefined) {
@@ -178,7 +197,7 @@ function QuizPage() {
           setTimerActive(true);
         }
       } else {
-        setTimeLeft(30);
+        setTimeLeft(questionTimeLimit);
         setTimerActive(true);
       }
     }
@@ -344,6 +363,10 @@ function QuizPage() {
   };
 
   const handleSubmitQuiz = async (finalAnswers?: { [key: number]: number | null | number[] }) => {
+    if (isSubmitting) {
+      return;
+    }
+
     setTimerActive(false); // Stop timer
     setIsSubmitting(true);
     
@@ -356,9 +379,11 @@ function QuizPage() {
         
         // Calculate total time spent across all questions
         const totalTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
-          const timeUsed = 30 - timeLeft;
+          const question = quiz.questions[parseInt(questionIndex)];
+          const questionTimeLimit = question?.timeLimit || 30;
+          const timeUsed = questionTimeLimit - timeLeft;
           return total + timeUsed;
-        }, 0) + (30 - timeLeft); // Add current question time
+        }, 0) + ((quiz.questions[currentQuestionIndex]?.timeLimit || 30) - timeLeft); // Add current question time
 
         // Prepare submission data
         const submissionData = {
@@ -443,17 +468,36 @@ function QuizPage() {
         navigate("/quiz-selection");
         return;
       }
-      // For other errors, let it fall through - apiResult will be undefined
+      // For other errors, set apiResult to null and don't navigate
       setIsSubmitting(false);
+      return; // Không navigate khi có lỗi
+    }
+    
+    // Chỉ navigate nếu apiResult không null và success
+    if (!apiResult || !(apiResult as any).success) {
+      setIsSubmitting(false);
+      // Có thể show error message ở đây hoặc navigate về quiz-selection
+      navigate("/quiz-selection");
+      return; // Không navigate đến quiz-result nếu không có kết quả
+    }
+    
+    // Safety check: quiz must exist at this point
+    if (!quiz) {
+      setIsSubmitting(false);
+      navigate("/quiz-selection");
+      return;
     }
     
     // Calculate final time spent for navigation
     const finalTimeSpent = Object.entries(questionTimes).reduce((total, [questionIndex, timeLeft]) => {
-      const timeUsed = 30 - timeLeft;
+      const question = quiz.questions[parseInt(questionIndex)];
+      const questionTimeLimit = question?.timeLimit || 30;
+      const timeUsed = questionTimeLimit - timeLeft;
       return total + timeUsed;
-    }, 0) + (30 - timeLeft);
+    }, 0) + ((quiz.questions[currentQuestionIndex]?.timeLimit || 30) - timeLeft);
 
-    // Navigate to results page with API result
+    // Navigate to results page with API result (chỉ khi có apiResult success)
+    setIsSubmitting(false);
     navigate(`/quiz-result/${id}`, { 
       state: { 
         answers: finalAnswers || answers, 
@@ -719,10 +763,10 @@ function QuizPage() {
                   disabled={isTimeUp}
                   className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
                     isSelected
-                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      ? 'border-purple-600 bg-purple-50 text-purple-900 font-semibold'
                       : isTimeUp
                       ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-25'
+                      : 'border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-25 text-gray-800'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -732,8 +776,8 @@ function QuizPage() {
                         : 'rounded-full'     // Circle for single-select
                     } ${
                       isSelected
-                        ? 'border-purple-500 bg-purple-500'
-                        : 'border-gray-300'
+                        ? 'border-purple-600 bg-purple-600'
+                        : 'border-gray-400'
                     }`}>
                       {isSelected && currentQuestion.type === 'multi' && (
                         <Icon icon="zi-check" className="text-white text-xs" />
@@ -742,7 +786,7 @@ function QuizPage() {
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       )}
                     </div>
-                    <Text size="small" className="font-medium">
+                    <Text size="small" className="font-semibold">
                       {answer.content}
                     </Text>
                   </div>
@@ -765,10 +809,11 @@ function QuizPage() {
             size="medium"
             onClick={handlePreviousQuestion}
             disabled={
+              isSubmitting ||
               currentQuestionIndex === 0 || 
               (questionTimes[currentQuestionIndex - 1] !== undefined && questionTimes[currentQuestionIndex - 1] === 0)
             }
-            className="flex-1"
+            className="flex-1 text-black"
           >
             <Icon icon="zi-arrow-left" />
             Trước
@@ -779,11 +824,12 @@ function QuizPage() {
              size="medium"
              onClick={handleNextQuestion}
              disabled={
-               currentQuestion.type === 'multi' 
+               isSubmitting ||
+               (currentQuestion.type === 'multi' 
                  ? selectedAnswers.length === 0
-                 : selectedAnswer === null
+                 : selectedAnswer === null)
              }
-             className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500"
+             className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-black"
            >
             {currentQuestionIndex === (quiz.actualQuestions || quiz.displayQuestions || quiz.questions.length) - 1 ? (
               <>

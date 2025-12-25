@@ -1,21 +1,28 @@
 const API_BASE_URL = 'https://loyalty.bom.asia/api/miniApp/quiz/steps';
 
 // Complete quiz step
-export const completeQuizStep = async (userId, stepData) => {
+export const completeQuizStep = async (userId, stepData, pointsEarned) => {
   try {
+    const requestBody = {
+      stepOrder: 1,
+      stepData: {
+        quizId: stepData.quizId,
+        score: stepData.score,
+        timeSpent: stepData.timeSpent
+      }
+    };
+
+    // Add pointsEarned if provided
+    if (pointsEarned !== undefined && pointsEarned !== null) {
+      requestBody.pointsEarned = pointsEarned;
+    }
+
     const response = await fetch(`${API_BASE_URL}/${userId}/steps/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        stepId: 10,
-        stepData: {
-          quizId: stepData.quizId,
-          score: stepData.score,
-          timeSpent: stepData.timeSpent
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -38,7 +45,7 @@ export const completePharmacyStep = async (userId, stepData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stepId: 11,
+        stepOrder: 2,
         stepData: stepData
       })
     });
@@ -63,7 +70,7 @@ export const completeFollowOAStep = async (userId, stepData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        stepId: 12,
+        stepOrder: 3,
         stepData: {
           followedOA: stepData.followedOA
         }
@@ -82,17 +89,24 @@ export const completeFollowOAStep = async (userId, stepData) => {
 };
 
 // Generic function to complete any step
-export const completeStep = async (userId, stepId, stepData) => {
+export const completeStep = async (userId, stepOrder, stepData, pointsEarned) => {
   try {
+    const requestBody = {
+      stepOrder: stepOrder,
+      stepData: stepData
+    };
+
+    // Add pointsEarned if provided
+    if (pointsEarned !== undefined && pointsEarned !== null) {
+      requestBody.pointsEarned = pointsEarned;
+    }
+
     const response = await fetch(`${API_BASE_URL}/${userId}/steps/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        stepId: stepId,
-        stepData: stepData
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -101,7 +115,7 @@ export const completeStep = async (userId, stepId, stepData) => {
 
     return await response.json();
   } catch (error) {
-    console.error(`Error completing step ${stepId}:`, error);
+    console.error(`Error completing step ${stepOrder}:`, error);
     throw error;
   }
 };

@@ -157,14 +157,6 @@ export const createUserGift = async (userId, giftData) => {
       data: giftData,
     };
   
-    // Log data being sent to API
-    console.log("📤 createUserGift - Dữ liệu gửi lên:", {
-      userId,
-      giftData,
-      url: `${BASE_URL}/api/miniApp/quiz/users/${userId}/gifts`,
-      requestConfig
-    });
-  
     try {
       const result = await axios(requestConfig);
       return result.data;
